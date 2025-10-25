@@ -39,6 +39,7 @@ const SalesOrders = () => {
     delivery_date: "",
     cgst_percent: "9",
     sgst_percent: "9",
+    tax_amount: "0",
     discount_amount: "0",
     notes: "",
   });
@@ -229,6 +230,7 @@ const SalesOrders = () => {
                 delivery_date: "",
                 cgst_percent: "9",
                 sgst_percent: "9",
+                tax_amount: "0",
                 discount_amount: "0",
                 notes: "",
               });

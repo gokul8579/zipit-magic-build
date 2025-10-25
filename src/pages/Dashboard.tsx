@@ -27,8 +27,6 @@ interface UpcomingCall {
 
 const Dashboard = () => {
   const navigate = useNavigate();
-const Dashboard = () => {
-  const navigate = useNavigate();
   const [stats, setStats] = useState<DashboardStats>({
     totalLeads: 0,
     totalCustomers: 0,
