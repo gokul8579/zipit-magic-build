@@ -15,11 +15,12 @@ import { DetailViewDialog, DetailField } from "@/components/DetailViewDialog";
 interface Call {
   id: string;
   title: string;
+  call_type: string;
   status: string;
   scheduled_at: string | null;
-  duration_minutes: number | null;
+  duration: number | null;
   notes: string | null;
-  customer_id: string | null;
+  outcome: string | null;
 }
 
 const Calls = () => {
@@ -30,6 +31,7 @@ const Calls = () => {
   const [detailOpen, setDetailOpen] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
+    call_type: "call",
     status: "scheduled",
     scheduled_at: "",
     notes: "",
@@ -67,7 +69,8 @@ const Calls = () => {
 
       const { error } = await supabase.from("calls").insert([{
         title: formData.title,
-        status: formData.status,
+        call_type: formData.call_type as any,
+        status: formData.status as any,
         scheduled_at: formData.scheduled_at || null,
         notes: formData.notes || null,
         user_id: user.id,
@@ -79,6 +82,7 @@ const Calls = () => {
       setOpen(false);
       setFormData({
         title: "",
+        call_type: "call",
         status: "scheduled",
         scheduled_at: "",
         notes: "",
@@ -123,9 +127,12 @@ const Calls = () => {
         .from("calls")
         .update({
           title: data.title,
-          status: data.status,
+          call_type: data.call_type as any,
+          status: data.status as any,
           scheduled_at: data.scheduled_at || null,
+          duration: data.duration ? parseInt(data.duration) : null,
           notes: data.notes,
+          outcome: data.outcome,
         })
         .eq("id", selectedCall.id);
 
@@ -144,28 +151,42 @@ const Calls = () => {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold">Calls & Meetings</h1>
-          <p className="text-muted-foreground">Schedule and track your calls</p>
+          <p className="text-muted-foreground">Schedule and track your calls and meetings</p>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="h-4 w-4 mr-2" />
-              Log Call
+              Log Call/Meeting
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Log New Call</DialogTitle>
+              <DialogTitle>Log New Call/Meeting</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="title">Call Subject *</Label>
+                <Label htmlFor="title">Subject *</Label>
                 <Input
                   id="title"
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                   required
                 />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="call_type">Type</Label>
+                <Select value={formData.call_type} onValueChange={(value) => setFormData({ ...formData, call_type: value })}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="call">Call</SelectItem>
+                    <SelectItem value="meeting">Meeting</SelectItem>
+                    <SelectItem value="outbound">Outbound Call</SelectItem>
+                    <SelectItem value="inbound">Inbound Call</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="status">Status</Label>
@@ -203,7 +224,7 @@ const Calls = () => {
                 <Button type="button" variant="outline" onClick={() => setOpen(false)}>
                   Cancel
                 </Button>
-                <Button type="submit">Log Call</Button>
+                <Button type="submit">Save</Button>
               </div>
             </form>
           </DialogContent>
@@ -215,6 +236,7 @@ const Calls = () => {
           <TableHeader>
             <TableRow>
               <TableHead>Subject</TableHead>
+              <TableHead>Type</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Scheduled</TableHead>
               <TableHead>Duration</TableHead>
@@ -242,6 +264,7 @@ const Calls = () => {
               calls.map((call) => (
                 <TableRow key={call.id}>
                   <TableCell className="font-medium">{call.title}</TableCell>
+                  <TableCell className="capitalize">{call.call_type}</TableCell>
                   <TableCell onClick={(e) => e.stopPropagation()}>
                     <Select
                       value={call.status}
@@ -264,11 +287,14 @@ const Calls = () => {
                   </TableCell>
                   <TableCell>
                     {call.scheduled_at
-                      ? new Date(call.scheduled_at).toLocaleString()
+                      ? new Date(call.scheduled_at).toLocaleString('en-IN', {
+                          dateStyle: 'medium',
+                          timeStyle: 'short'
+                        })
                       : "-"}
                   </TableCell>
                   <TableCell>
-                    {call.duration_minutes ? `${call.duration_minutes} min` : "-"}
+                    {call.duration ? `${call.duration} min` : "-"}
                   </TableCell>
                   <TableCell>
                     <Button
@@ -297,6 +323,18 @@ const Calls = () => {
           fields={[
             { label: "Subject", value: selectedCall.title, type: "text", fieldName: "title" },
             { 
+              label: "Type", 
+              value: selectedCall.call_type, 
+              type: "select",
+              fieldName: "call_type",
+              selectOptions: [
+                { value: "call", label: "Call" },
+                { value: "meeting", label: "Meeting" },
+                { value: "outbound", label: "Outbound Call" },
+                { value: "inbound", label: "Inbound Call" },
+              ]
+            },
+            { 
               label: "Status", 
               value: selectedCall.status, 
               type: "select",
@@ -309,8 +347,9 @@ const Calls = () => {
               ]
             },
             { label: "Scheduled", value: selectedCall.scheduled_at || "", type: "datetime", fieldName: "scheduled_at" },
-            { label: "Duration (min)", value: selectedCall.duration_minutes, type: "number", fieldName: "duration_minutes" },
-            { label: "Notes", value: selectedCall.notes, fieldName: "notes" },
+            { label: "Duration (min)", value: selectedCall.duration, type: "number", fieldName: "duration" },
+            { label: "Notes", value: selectedCall.notes, type: "textarea", fieldName: "notes" },
+            { label: "Outcome", value: selectedCall.outcome, type: "textarea", fieldName: "outcome" },
           ]}
           onEdit={handleDetailEdit}
         />

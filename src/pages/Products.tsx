@@ -17,13 +17,12 @@ interface Product {
   id: string;
   name: string;
   sku: string | null;
-  category: string | null;
-  catalogue: string | null;
   description: string | null;
   unit_price: number;
-  stock_quantity: number;
-  cost_price: number;
-  active: boolean;
+  quantity_in_stock: number;
+  catalogue: string | null;
+  weight: number | null;
+  weight_unit: string | null;
   created_at: string;
 }
 
@@ -42,12 +41,12 @@ const Products = () => {
   const [formData, setFormData] = useState({
     name: "",
     sku: "",
-    category: "",
     catalogue: "",
     description: "",
     unit_price: "",
     stock_quantity: "",
-    cost_price: "",
+    weight: "",
+    weight_unit: "kg",
   });
 
   useEffect(() => {
@@ -117,12 +116,12 @@ const Products = () => {
       const { error } = await supabase.from("products").insert([{
         name: formData.name,
         sku: formData.sku || null,
-        category: formData.category || null,
         catalogue: formData.catalogue || null,
         description: formData.description || null,
         unit_price: parseFloat(formData.unit_price),
-        stock_quantity: formData.stock_quantity ? parseInt(formData.stock_quantity) : 0,
-        cost_price: formData.cost_price ? parseFloat(formData.cost_price) : 0,
+        quantity_in_stock: formData.stock_quantity ? parseInt(formData.stock_quantity) : 0,
+        weight: formData.weight ? parseFloat(formData.weight) : null,
+        weight_unit: formData.weight_unit || 'kg',
         user_id: user.id,
       }] as any);
 
@@ -133,12 +132,12 @@ const Products = () => {
       setFormData({
         name: "",
         sku: "",
-        category: "",
         catalogue: "",
         description: "",
         unit_price: "",
         stock_quantity: "",
-        cost_price: "",
+        weight: "",
+        weight_unit: "kg",
       });
       fetchProducts();
     } catch (error: any) {
@@ -160,13 +159,12 @@ const Products = () => {
         .update({
           name: data.name,
           sku: data.sku || null,
-          category: data.category || null,
           catalogue: data.catalogue || null,
           description: data.description || null,
           unit_price: parseFloat(data.unit_price),
-          stock_quantity: parseInt(data.stock_quantity) || 0,
-          cost_price: parseFloat(data.cost_price) || 0,
-          active: data.active === "true" || data.active === true,
+          quantity_in_stock: parseInt(data.quantity_in_stock) || 0,
+          weight: data.weight ? parseFloat(data.weight) : null,
+          weight_unit: data.weight_unit || 'kg',
         })
         .eq("id", selectedProduct.id);
 
@@ -187,8 +185,8 @@ const Products = () => {
         return product.name.toLowerCase().includes(searchLower);
       case "sku":
         return product.sku?.toLowerCase().includes(searchLower) ?? false;
-      case "category":
-        return product.category?.toLowerCase().includes(searchLower) ?? false;
+      case "catalogue":
+        return product.catalogue?.toLowerCase().includes(searchLower) ?? false;
       default:
         return true;
     }
@@ -198,13 +196,6 @@ const Products = () => {
     { label: "Name", value: selectedProduct.name, type: "text", fieldName: "name" },
     { label: "SKU", value: selectedProduct.sku, type: "text", fieldName: "sku" },
     { 
-      label: "Category", 
-      value: selectedProduct.category, 
-      type: "select", 
-      fieldName: "category",
-      selectOptions: categories.map(c => ({ value: c, label: c }))
-    },
-    { 
       label: "Catalogue", 
       value: selectedProduct.catalogue, 
       type: "select", 
@@ -213,16 +204,21 @@ const Products = () => {
     },
     { label: "Description", value: selectedProduct.description, type: "textarea", fieldName: "description" },
     { label: "Unit Price", value: selectedProduct.unit_price, type: "currency", fieldName: "unit_price" },
-    { label: "Stock Quantity", value: selectedProduct.stock_quantity, type: "number", fieldName: "stock_quantity" },
-    { label: "Cost Price", value: selectedProduct.cost_price, type: "currency", fieldName: "cost_price" },
+    { label: "Stock Quantity", value: selectedProduct.quantity_in_stock, type: "number", fieldName: "quantity_in_stock" },
+    { label: "Weight", value: selectedProduct.weight, type: "number", fieldName: "weight" },
     { 
-      label: "Status", 
-      value: selectedProduct.active ? "true" : "false", 
+      label: "Weight Unit", 
+      value: selectedProduct.weight_unit || 'kg', 
       type: "select", 
-      fieldName: "active",
+      fieldName: "weight_unit",
       selectOptions: [
-        { value: "true", label: "Active" },
-        { value: "false", label: "Inactive" },
+        { value: "kg", label: "Kilograms (kg)" },
+        { value: "g", label: "Grams (g)" },
+        { value: "l", label: "Litres (l)" },
+        { value: "ml", label: "Millilitres (ml)" },
+        { value: "piece", label: "Piece" },
+        { value: "dozen", label: "Dozen" },
+        { value: "box", label: "Box" },
       ]
     },
     { label: "Created", value: selectedProduct.created_at, type: "date" },
@@ -236,8 +232,8 @@ const Products = () => {
           <p className="text-muted-foreground">Manage your product catalog</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setCategoryDialogOpen(true)}>
-            Create Category
+          <Button variant="outline" onClick={() => setCatalogueDialogOpen(true)}>
+            Create Catalogue/Pricebook
           </Button>
           <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
@@ -269,19 +265,6 @@ const Products = () => {
                     onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
                   />
                 </div>
-              <div className="space-y-2">
-                <Label htmlFor="category">Category</Label>
-                <Select value={formData.category} onValueChange={(v) => setFormData({ ...formData, category: v })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((c) => (
-                      <SelectItem key={c} value={c}>{c}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="catalogue">Catalogue</Label>
@@ -319,14 +302,31 @@ const Products = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="cost_price">Cost Price (₹)</Label>
+                  <Label htmlFor="weight">Weight</Label>
                   <Input
-                    id="cost_price"
+                    id="weight"
                     type="number"
                     step="0.01"
-                    value={formData.cost_price}
-                    onChange={(e) => setFormData({ ...formData, cost_price: e.target.value })}
+                    value={formData.weight}
+                    onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
                   />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="weight_unit">Weight Unit</Label>
+                  <Select value={formData.weight_unit} onValueChange={(v) => setFormData({ ...formData, weight_unit: v })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="kg">Kilograms (kg)</SelectItem>
+                      <SelectItem value="g">Grams (g)</SelectItem>
+                      <SelectItem value="l">Litres (l)</SelectItem>
+                      <SelectItem value="ml">Millilitres (ml)</SelectItem>
+                      <SelectItem value="piece">Piece</SelectItem>
+                      <SelectItem value="dozen">Dozen</SelectItem>
+                      <SelectItem value="box">Box</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               <div className="space-y-2">
@@ -347,42 +347,10 @@ const Products = () => {
             </form>
           </DialogContent>
         </Dialog>
-        <Dialog open={categoryDialogOpen} onOpenChange={setCategoryDialogOpen}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>Create Category</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={async (e) => {
-              e.preventDefault();
-              const name = (document.getElementById('new_category_name') as HTMLInputElement).value.trim();
-              if (!name) return;
-              try {
-                const { data: { user } } = await supabase.auth.getUser();
-                if (!user) return;
-                const { error } = await supabase.from('product_categories').insert({ name, user_id: user.id } as any);
-                if (error) throw error;
-                toast.success('Category created');
-                setCategoryDialogOpen(false);
-                fetchCategories();
-              } catch (err) {
-                toast.error('Error creating category');
-              }
-            }} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="new_category_name">Category Name</Label>
-                <Input id="new_category_name" />
-              </div>
-              <div className="flex justify-end gap-2">
-                <Button type="button" variant="outline" onClick={() => setCategoryDialogOpen(false)}>Cancel</Button>
-                <Button type="submit">Create</Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
         <Dialog open={catalogueDialogOpen} onOpenChange={setCatalogueDialogOpen}>
           <DialogContent className="max-w-md">
             <DialogHeader>
-              <DialogTitle>Create Catalogue</DialogTitle>
+              <DialogTitle>Create Catalogue/Pricebook</DialogTitle>
             </DialogHeader>
             <form onSubmit={async (e) => {
               e.preventDefault();
@@ -401,7 +369,7 @@ const Products = () => {
               }
             }} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="new_catalogue_name">Catalogue Name</Label>
+                <Label htmlFor="new_catalogue_name">Catalogue/Pricebook Name</Label>
                 <Input id="new_catalogue_name" />
               </div>
               <div className="flex justify-end gap-2">
@@ -422,7 +390,7 @@ const Products = () => {
         filterOptions={[
           { value: "name", label: "Name" },
           { value: "sku", label: "SKU" },
-          { value: "category", label: "Category" },
+          { value: "catalogue", label: "Catalogue" },
         ]}
         placeholder="Search products..."
       />
@@ -433,10 +401,10 @@ const Products = () => {
             <TableRow>
               <TableHead>Name</TableHead>
               <TableHead>SKU</TableHead>
-              <TableHead>Category</TableHead>
+              <TableHead>Catalogue</TableHead>
               <TableHead>Unit Price</TableHead>
               <TableHead>Stock</TableHead>
-              <TableHead>Status</TableHead>
+              <TableHead>Weight</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -465,16 +433,10 @@ const Products = () => {
                 >
                   <TableCell className="font-medium">{product.name}</TableCell>
                   <TableCell>{product.sku || "-"}</TableCell>
-                  <TableCell>{product.category || "-"}</TableCell>
-                  <TableCell>₹{Number(product.unit_price).toFixed(2)}</TableCell>
-                  <TableCell>{product.stock_quantity || 0}</TableCell>
-                  <TableCell>
-                    {product.active ? (
-                      <Badge variant="outline" className="bg-green-100 text-green-800">Active</Badge>
-                    ) : (
-                      <Badge variant="outline">Inactive</Badge>
-                    )}
-                  </TableCell>
+                  <TableCell>{product.catalogue || "-"}</TableCell>
+                  <TableCell>₹{Number(product.unit_price).toLocaleString('en-IN')}</TableCell>
+                  <TableCell>{product.quantity_in_stock}</TableCell>
+                  <TableCell>{product.weight ? `${product.weight} ${product.weight_unit || 'kg'}` : "-"}</TableCell>
                 </TableRow>
               ))
             )}
