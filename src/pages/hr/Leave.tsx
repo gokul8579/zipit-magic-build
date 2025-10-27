@@ -18,7 +18,7 @@ interface LeaveRequest {
   leave_type: string;
   start_date: string;
   end_date: string;
-  total_days: number;
+  days: number;
   reason: string | null;
   status: string;
 }
@@ -106,7 +106,7 @@ const Leave = () => {
         leave_type: formData.leave_type,
         start_date: formData.start_date,
         end_date: formData.end_date,
-        total_days: days,
+        days: days,
         reason: formData.reason || null,
         user_id: user.id,
       }] as any);
@@ -268,7 +268,7 @@ const Leave = () => {
                   <TableCell className="capitalize">{request.leave_type.replace("_", " ")}</TableCell>
                   <TableCell>{new Date(request.start_date).toLocaleDateString()}</TableCell>
                   <TableCell>{new Date(request.end_date).toLocaleDateString()}</TableCell>
-                  <TableCell>{request.total_days}</TableCell>
+                  <TableCell>{request.days}</TableCell>
                   <TableCell>
                     <Badge variant="outline" className={getStatusColor(request.status)}>
                       {request.status}
@@ -303,7 +303,7 @@ const Leave = () => {
             { label: "Leave Type", value: selectedLeave.leave_type.replace("_", " "), type: "text" },
             { label: "Start Date", value: selectedLeave.start_date, type: "date" },
             { label: "End Date", value: selectedLeave.end_date, type: "date" },
-            { label: "Days", value: selectedLeave.total_days, type: "number" },
+            { label: "Days", value: selectedLeave.days, type: "number" },
             { label: "Reason", value: selectedLeave.reason },
             { label: "Status", value: selectedLeave.status, type: "badge", badgeColor: getStatusColor(selectedLeave.status) },
           ]}

@@ -46,7 +46,7 @@ export const PriceBookProductsDialog = ({
       // Get price book items
       const { data: priceBookItems, error: itemsError } = await supabase
         .from("price_book_items")
-        .select("id, unit_price, product_id")
+        .select("id, list_price, product_id")
         .eq("price_book_id", priceBookId!);
 
       if (itemsError) throw itemsError;
@@ -60,7 +60,7 @@ export const PriceBookProductsDialog = ({
       const productIds = priceBookItems.map(item => item.product_id);
       const { data: productsData, error: productsError } = await supabase
         .from("products")
-        .select("id, name, stock_quantity")
+        .select("id, name, quantity_in_stock")
         .in("id", productIds);
 
       if (productsError) throw productsError;
@@ -70,7 +70,8 @@ export const PriceBookProductsDialog = ({
         const priceBookItem = priceBookItems.find(item => item.product_id === product.id);
         return {
           ...product,
-          unit_price: priceBookItem?.unit_price || 0,
+          stock_quantity: product.quantity_in_stock,
+          unit_price: priceBookItem?.list_price || 0,
         };
       }) || [];
 

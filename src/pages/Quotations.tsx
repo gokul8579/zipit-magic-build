@@ -101,8 +101,7 @@ const Quotations = () => {
       const { data, error } = await supabase
         .from("products")
         .select("id, name, unit_price")
-        .eq("user_id", user.id)
-        .eq("active", true);
+        .eq("user_id", user.id);
 
       if (error) throw error;
       setProducts(data || []);
@@ -179,11 +178,10 @@ const Quotations = () => {
       if (quotation && lineItems.length > 0) {
         const items = lineItems.map(item => ({
           quotation_id: quotation.id,
-          product_id: item.product_id || null,
           description: item.description,
           quantity: item.quantity,
           unit_price: item.unit_price,
-          line_total: item.quantity * item.unit_price,
+          amount: item.quantity * item.unit_price,
         }));
         
         const { error: itemsError } = await supabase.from("quotation_items").insert(items);
@@ -247,7 +245,7 @@ const Quotations = () => {
           description: item.description,
           quantity: Number(item.quantity),
           unit_price: Number(item.unit_price),
-          amount: Number(item.line_total),
+          amount: Number(item.amount),
         })) || [],
         subtotal: Number(quotation.total_amount) - Number(quotation.tax_amount) + Number(quotation.discount_amount),
         tax_amount: Number(quotation.tax_amount),

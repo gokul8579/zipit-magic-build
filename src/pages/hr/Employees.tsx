@@ -14,20 +14,18 @@ import { DetailViewDialog } from "@/components/DetailViewDialog";
 
 interface Employee {
   id: string;
-  employee_code: string;
+  employee_code: string | null;
   first_name: string;
   last_name: string;
   email: string | null;
   phone: string | null;
   department_id: string | null;
-  designation: string | null;
-  date_of_joining: string | null;
+  position: string | null;
+  hire_date: string | null;
   salary: number | null;
   status: string;
   address: string | null;
-  emergency_contact_name: string | null;
-  emergency_contact_phone: string | null;
-  date_of_birth: string | null;
+  emergency_contact: string | null;
   created_at: string;
 }
 
@@ -50,15 +48,12 @@ const Employees = () => {
     email: "",
     phone: "",
     department_id: "",
-    designation: "",
-    date_of_joining: "",
-    date_of_birth: "",
+    position: "",
+    hire_date: "",
     salary: "",
-    employment_type: "",
     status: "active",
     address: "",
-    emergency_contact_name: "",
-    emergency_contact_phone: "",
+    emergency_contact: "",
   });
 
   useEffect(() => {
@@ -127,15 +122,12 @@ const Employees = () => {
         email: "",
         phone: "",
         department_id: "",
-        designation: "",
-        date_of_joining: "",
-        date_of_birth: "",
+        position: "",
+        hire_date: "",
         salary: "",
-        employment_type: "",
         status: "active",
         address: "",
-        emergency_contact_name: "",
-        emergency_contact_phone: "",
+        emergency_contact: "",
       });
       fetchEmployees();
     } catch (error: any) {
@@ -243,29 +235,20 @@ const Employees = () => {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="designation">Designation</Label>
+                  <Label htmlFor="position">Position</Label>
                   <Input
-                    id="designation"
-                    value={formData.designation}
-                    onChange={(e) => setFormData({ ...formData, designation: e.target.value })}
+                    id="position"
+                    value={formData.position}
+                    onChange={(e) => setFormData({ ...formData, position: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="date_of_joining">Date of Joining</Label>
+                  <Label htmlFor="hire_date">Hire Date</Label>
                   <Input
-                    id="date_of_joining"
+                    id="hire_date"
                     type="date"
-                    value={formData.date_of_joining}
-                    onChange={(e) => setFormData({ ...formData, date_of_joining: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="date_of_birth">Date of Birth</Label>
-                  <Input
-                    id="date_of_birth"
-                    type="date"
-                    value={formData.date_of_birth}
-                    onChange={(e) => setFormData({ ...formData, date_of_birth: e.target.value })}
+                    value={formData.hire_date}
+                    onChange={(e) => setFormData({ ...formData, hire_date: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
@@ -279,20 +262,6 @@ const Employees = () => {
                     placeholder="₹"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="employment_type">Employment Type</Label>
-                  <Select value={formData.employment_type || ""} onValueChange={(value) => setFormData({ ...formData, employment_type: value })}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="full_time">Full Time</SelectItem>
-                      <SelectItem value="part_time">Part Time</SelectItem>
-                      <SelectItem value="contract">Contract</SelectItem>
-                      <SelectItem value="intern">Intern</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="address">Address</Label>
@@ -303,23 +272,14 @@ const Employees = () => {
                   rows={2}
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="emergency_contact_name">Emergency Contact Name</Label>
-                  <Input
-                    id="emergency_contact_name"
-                    value={formData.emergency_contact_name}
-                    onChange={(e) => setFormData({ ...formData, emergency_contact_name: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="emergency_contact_phone">Emergency Contact Phone</Label>
-                  <Input
-                    id="emergency_contact_phone"
-                    value={formData.emergency_contact_phone}
-                    onChange={(e) => setFormData({ ...formData, emergency_contact_phone: e.target.value })}
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="emergency_contact">Emergency Contact</Label>
+                <Input
+                  id="emergency_contact"
+                  value={formData.emergency_contact}
+                  onChange={(e) => setFormData({ ...formData, emergency_contact: e.target.value })}
+                  placeholder="Name & Phone"
+                />
               </div>
               <div className="flex justify-end gap-2">
                 <Button type="button" variant="outline" onClick={() => setOpen(false)}>
@@ -339,7 +299,7 @@ const Employees = () => {
               <TableHead>Employee Code</TableHead>
               <TableHead>Name</TableHead>
               <TableHead>Department</TableHead>
-              <TableHead>Designation</TableHead>
+              <TableHead>Position</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
@@ -364,7 +324,7 @@ const Employees = () => {
                   <TableCell className="font-medium">{employee.employee_code}</TableCell>
                   <TableCell>{`${employee.first_name} ${employee.last_name}`}</TableCell>
                   <TableCell>{getDepartmentName(employee.department_id)}</TableCell>
-                  <TableCell>{employee.designation || "-"}</TableCell>
+                  <TableCell>{employee.position || "-"}</TableCell>
                   <TableCell>
                     <Badge variant="outline" className={getStatusColor(employee.status)}>
                       {employee.status}
@@ -398,15 +358,13 @@ const Employees = () => {
             { label: "Employee Code", value: selectedEmployee.employee_code },
             { label: "Email", value: selectedEmployee.email },
             { label: "Phone", value: selectedEmployee.phone },
-            { label: "Date of Birth", value: selectedEmployee.date_of_birth, type: "date" },
             { label: "Department", value: getDepartmentName(selectedEmployee.department_id) },
-            { label: "Designation", value: selectedEmployee.designation },
-            { label: "Date of Joining", value: selectedEmployee.date_of_joining, type: "date" },
+            { label: "Position", value: selectedEmployee.position },
+            { label: "Hire Date", value: selectedEmployee.hire_date, type: "date" },
             { label: "Salary", value: selectedEmployee.salary, type: "currency" },
             { label: "Status", value: selectedEmployee.status, type: "badge", badgeColor: getStatusColor(selectedEmployee.status) },
             { label: "Address", value: selectedEmployee.address },
-            { label: "Emergency Contact", value: selectedEmployee.emergency_contact_name },
-            { label: "Emergency Phone", value: selectedEmployee.emergency_contact_phone },
+            { label: "Emergency Contact", value: selectedEmployee.emergency_contact },
           ]}
         />
       )}

@@ -17,7 +17,7 @@ interface SalesOrder {
   status: string;
   order_date: string;
   total_amount: number;
-  delivery_date: string | null;
+  expected_delivery_date: string | null;
   customer_id: string | null;
   tax_amount: number;
   discount_amount: number;
@@ -44,7 +44,7 @@ const SalesOrders = () => {
     notes: "",
   });
   const [lineItems, setLineItems] = useState([
-    { description: "", quantity: 1, unit_price: 0 }
+    { product_id: "", description: "", quantity: 1, unit_price: 0 }
   ]);
 
   useEffect(() => {
@@ -122,7 +122,7 @@ const SalesOrders = () => {
       const invoiceData = {
         invoice_number: order.order_number,
         date: order.order_date,
-        due_date: order.delivery_date,
+        due_date: order.expected_delivery_date,
         customer_name: customerData?.name || "Customer Name",
         customer_email: customerData?.email,
         customer_phone: customerData?.phone,
@@ -131,7 +131,7 @@ const SalesOrders = () => {
           description: item.description,
           quantity: Number(item.quantity),
           unit_price: Number(item.unit_price),
-          amount: Number(item.line_total),
+          amount: Number(item.amount),
         })) || [],
         subtotal: Number(order.total_amount) - Number(order.tax_amount) + Number(order.discount_amount),
         tax_amount: Number(order.tax_amount),
@@ -207,12 +207,13 @@ const SalesOrders = () => {
                   const itemSgst = (itemTotal * sgstPercent) / 100;
                   return {
                     sales_order_id: order.id,
+                    product_id: item.product_id || null,
                     description: item.description,
                     quantity: item.quantity,
                     unit_price: item.unit_price,
                     cgst_amount: itemCgst,
                     sgst_amount: itemSgst,
-                    line_total: itemTotal + itemCgst + itemSgst,
+                    amount: itemTotal + itemCgst + itemSgst,
                   };
                 });
                 
@@ -234,7 +235,7 @@ const SalesOrders = () => {
                 discount_amount: "0",
                 notes: "",
               });
-              setLineItems([{ description: "", quantity: 1, unit_price: 0 }]);
+              setLineItems([{ product_id: "", description: "", quantity: 1, unit_price: 0 }]);
               fetchOrders();
             } catch (err) {
               toast.error("Error creating sales order");
@@ -311,7 +312,7 @@ const SalesOrders = () => {
                   </div>
                 </div>
               ))}
-              <Button type="button" variant="outline" size="sm" onClick={() => setLineItems([...lineItems, { description: "", quantity: 1, unit_price: 0 }])}>Add Item</Button>
+              <Button type="button" variant="outline" size="sm" onClick={() => setLineItems([...lineItems, { product_id: "", description: "", quantity: 1, unit_price: 0 }])}>Add Item</Button>
             </div>
 
             <div className="flex justify-end gap-2">
@@ -362,8 +363,8 @@ const SalesOrders = () => {
                   </TableCell>
                   <TableCell>{new Date(order.order_date).toLocaleDateString()}</TableCell>
                   <TableCell>
-                    {order.delivery_date
-                      ? new Date(order.delivery_date).toLocaleDateString()
+                    {order.expected_delivery_date
+                      ? new Date(order.expected_delivery_date).toLocaleDateString()
                       : "-"}
                   </TableCell>
                   <TableCell>₹{Number(order.total_amount).toLocaleString()}</TableCell>
