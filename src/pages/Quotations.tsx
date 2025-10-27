@@ -165,14 +165,22 @@ const Quotations = () => {
         cgst_percent: cgstPercent,
         sgst_percent: sgstPercent,
         tax_amount: taxAmount,
-        subtotal: subtotal,
         discount_amount: discountAmount,
         total_amount: totalAmount,
         notes: formData.notes,
         user_id: user.id,
       } as any).select().single();
 
-      if (error) throw error;
+      if (error) {
+        if (error.code === '23505') {
+          toast.error("A quotation with this number already exists");
+        } else if (error.code === '23503') {
+          toast.error("Invalid customer or deal selected");
+        } else {
+          toast.error("Failed to create quotation. Please check all fields.");
+        }
+        throw error;
+      }
 
       // Insert line items
       if (quotation && lineItems.length > 0) {
@@ -205,7 +213,6 @@ const Quotations = () => {
       fetchQuotations();
     } catch (error: any) {
       console.error("Quotation creation error:", error);
-      toast.error(error.message || "Error creating quotation");
     }
   };
 

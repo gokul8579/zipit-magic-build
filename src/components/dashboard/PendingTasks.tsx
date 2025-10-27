@@ -46,7 +46,7 @@ export const PendingTasks = () => {
     try {
       const { error } = await supabase
         .from("tasks")
-        .update({ status: "completed", completed_at: new Date().toISOString() })
+        .update({ status: "completed" })
         .eq("id", taskId);
 
       if (error) throw error;
@@ -113,7 +113,7 @@ export const PendingTasks = () => {
       <Button
         variant="link"
         className="w-full text-sm"
-        onClick={() => window.location.href = '/tasks'}
+        onClick={() => window.location.href = '/dashboard/tasks'}
       >
         View all tasks →
       </Button>

@@ -155,6 +155,25 @@ const Tasks = () => {
     }
   };
 
+  const handleDetailDelete = async () => {
+    if (!selectedTask) return;
+
+    try {
+      const { error } = await supabase
+        .from("tasks")
+        .delete()
+        .eq("id", selectedTask.id);
+
+      if (error) throw error;
+
+      toast.success("Task deleted successfully!");
+      fetchTasks();
+      setDetailOpen(false);
+    } catch (error: any) {
+      toast.error("Error deleting task");
+    }
+  };
+
   const detailFields: DetailField[] = selectedTask ? [
     { label: "Title", value: selectedTask.title, type: "text", fieldName: "title" },
     { label: "Description", value: selectedTask.description || "", type: "textarea", fieldName: "description" },
@@ -345,6 +364,7 @@ const Tasks = () => {
         title="Task Details"
         fields={detailFields}
         onEdit={handleDetailEdit}
+        onDelete={handleDetailDelete}
       />
     </div>
   );

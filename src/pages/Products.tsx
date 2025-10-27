@@ -96,9 +96,10 @@ const Products = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       const { data, error } = await supabase
-        .from("product_catalogues")
+        .from("price_books")
         .select("name")
         .eq("user_id", user.id)
+        .eq("is_active", true)
         .order("name");
       if (error) throw error;
       setCatalogues((data || []).map((c: any) => c.name));
@@ -120,12 +121,17 @@ const Products = () => {
         description: formData.description || null,
         unit_price: parseFloat(formData.unit_price),
         quantity_in_stock: formData.stock_quantity ? parseInt(formData.stock_quantity) : 0,
-        weight: formData.weight ? parseFloat(formData.weight) : null,
-        weight_unit: formData.weight_unit || 'kg',
         user_id: user.id,
       }] as any);
 
-      if (error) throw error;
+      if (error) {
+        if (error.code === '23505') {
+          toast.error("A product with this name already exists");
+        } else {
+          toast.error("Failed to create product. Please try again.");
+        }
+        throw error;
+      }
 
       toast.success("Product created successfully!");
       setOpen(false);
@@ -141,7 +147,7 @@ const Products = () => {
       });
       fetchProducts();
     } catch (error: any) {
-      toast.error("Error creating product");
+      console.error("Error creating product:", error);
     }
   };
 
@@ -163,18 +169,45 @@ const Products = () => {
           description: data.description || null,
           unit_price: parseFloat(data.unit_price),
           quantity_in_stock: parseInt(data.quantity_in_stock) || 0,
-          weight: data.weight ? parseFloat(data.weight) : null,
-          weight_unit: data.weight_unit || 'kg',
         })
         .eq("id", selectedProduct.id);
 
-      if (error) throw error;
+      if (error) {
+        if (error.code === '23505') {
+          toast.error("A product with this name already exists");
+        } else {
+          toast.error("Failed to update product. Please try again.");
+        }
+        throw error;
+      }
 
       toast.success("Product updated successfully!");
       fetchProducts();
       setDetailOpen(false);
     } catch (error: any) {
-      toast.error("Error updating product");
+      console.error("Error updating product:", error);
+    }
+  };
+
+  const handleDetailDelete = async () => {
+    if (!selectedProduct) return;
+
+    try {
+      const { error } = await supabase
+        .from("products")
+        .delete()
+        .eq("id", selectedProduct.id);
+
+      if (error) {
+        toast.error("Failed to delete product. It may be used in other records.");
+        throw error;
+      }
+
+      toast.success("Product deleted successfully!");
+      fetchProducts();
+      setDetailOpen(false);
+    } catch (error: any) {
+      console.error("Error deleting product:", error);
     }
   };
 
@@ -196,7 +229,7 @@ const Products = () => {
     { label: "Name", value: selectedProduct.name, type: "text", fieldName: "name" },
     { label: "SKU", value: selectedProduct.sku, type: "text", fieldName: "sku" },
     { 
-      label: "Catalogue", 
+      label: "Price Book", 
       value: selectedProduct.catalogue, 
       type: "select", 
       fieldName: "catalogue",
@@ -205,22 +238,6 @@ const Products = () => {
     { label: "Description", value: selectedProduct.description, type: "textarea", fieldName: "description" },
     { label: "Unit Price", value: selectedProduct.unit_price, type: "currency", fieldName: "unit_price" },
     { label: "Stock Quantity", value: selectedProduct.quantity_in_stock, type: "number", fieldName: "quantity_in_stock" },
-    { label: "Weight", value: selectedProduct.weight, type: "number", fieldName: "weight" },
-    { 
-      label: "Weight Unit", 
-      value: selectedProduct.weight_unit || 'kg', 
-      type: "select", 
-      fieldName: "weight_unit",
-      selectOptions: [
-        { value: "kg", label: "Kilograms (kg)" },
-        { value: "g", label: "Grams (g)" },
-        { value: "l", label: "Litres (l)" },
-        { value: "ml", label: "Millilitres (ml)" },
-        { value: "piece", label: "Piece" },
-        { value: "dozen", label: "Dozen" },
-        { value: "box", label: "Box" },
-      ]
-    },
     { label: "Created", value: selectedProduct.created_at, type: "date" },
   ] : [];
 
@@ -231,11 +248,7 @@ const Products = () => {
           <h1 className="text-3xl font-bold">Products</h1>
           <p className="text-muted-foreground">Manage your product catalog</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setCatalogueDialogOpen(true)}>
-            Create Catalogue/Pricebook
-          </Button>
-          <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="h-4 w-4 mr-2" />
@@ -265,19 +278,20 @@ const Products = () => {
                     onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
                   />
                 </div>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="catalogue">Catalogue</Label>
-                  <Button type="button" variant="ghost" size="sm" onClick={() => setCatalogueDialogOpen(true)}>New</Button>
-                </div>
+               <div className="space-y-2">
+                <Label htmlFor="catalogue">Price Book</Label>
                 <Select value={formData.catalogue} onValueChange={(v) => setFormData({ ...formData, catalogue: v })}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select catalogue" />
+                    <SelectValue placeholder="Select price book" />
                   </SelectTrigger>
                   <SelectContent>
-                    {catalogues.map((c) => (
-                      <SelectItem key={c} value={c}>{c}</SelectItem>
-                    ))}
+                    {catalogues.length === 0 ? (
+                      <SelectItem value="_none" disabled>No price books available. Create one in Price Books section.</SelectItem>
+                    ) : (
+                      catalogues.map((c) => (
+                        <SelectItem key={c} value={c}>{c}</SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -301,33 +315,6 @@ const Products = () => {
                     onChange={(e) => setFormData({ ...formData, stock_quantity: e.target.value })}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="weight">Weight</Label>
-                  <Input
-                    id="weight"
-                    type="number"
-                    step="0.01"
-                    value={formData.weight}
-                    onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="weight_unit">Weight Unit</Label>
-                  <Select value={formData.weight_unit} onValueChange={(v) => setFormData({ ...formData, weight_unit: v })}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="kg">Kilograms (kg)</SelectItem>
-                      <SelectItem value="g">Grams (g)</SelectItem>
-                      <SelectItem value="l">Litres (l)</SelectItem>
-                      <SelectItem value="ml">Millilitres (ml)</SelectItem>
-                      <SelectItem value="piece">Piece</SelectItem>
-                      <SelectItem value="dozen">Dozen</SelectItem>
-                      <SelectItem value="box">Box</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="description">Description</Label>
@@ -347,39 +334,6 @@ const Products = () => {
             </form>
           </DialogContent>
         </Dialog>
-        <Dialog open={catalogueDialogOpen} onOpenChange={setCatalogueDialogOpen}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>Create Catalogue/Pricebook</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={async (e) => {
-              e.preventDefault();
-              const name = (document.getElementById('new_catalogue_name') as HTMLInputElement).value.trim();
-              if (!name) return;
-              try {
-                const { data: { user } } = await supabase.auth.getUser();
-                if (!user) return;
-                const { error } = await supabase.from('product_catalogues').insert({ name, user_id: user.id } as any);
-                if (error) throw error;
-                toast.success('Catalogue created');
-                setCatalogueDialogOpen(false);
-                fetchCatalogues();
-              } catch (err) {
-                toast.error('Error creating catalogue');
-              }
-            }} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="new_catalogue_name">Catalogue/Pricebook Name</Label>
-                <Input id="new_catalogue_name" />
-              </div>
-              <div className="flex justify-end gap-2">
-                <Button type="button" variant="outline" onClick={() => setCatalogueDialogOpen(false)}>Cancel</Button>
-                <Button type="submit">Create</Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
-      </div>
       </div>
 
       <SearchFilter
@@ -401,22 +355,21 @@ const Products = () => {
             <TableRow>
               <TableHead>Name</TableHead>
               <TableHead>SKU</TableHead>
-              <TableHead>Catalogue</TableHead>
+              <TableHead>Price Book</TableHead>
               <TableHead>Unit Price</TableHead>
               <TableHead>Stock</TableHead>
-              <TableHead>Weight</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center">
+                <TableCell colSpan={5} className="text-center">
                   Loading...
                 </TableCell>
               </TableRow>
             ) : filteredProducts.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center text-muted-foreground py-12">
+                <TableCell colSpan={5} className="text-center text-muted-foreground py-12">
                   <div className="flex flex-col items-center gap-2">
                     <Package className="h-12 w-12 text-muted-foreground/50" />
                     <p>No products found</p>
@@ -436,7 +389,6 @@ const Products = () => {
                   <TableCell>{product.catalogue || "-"}</TableCell>
                   <TableCell>₹{Number(product.unit_price).toLocaleString('en-IN')}</TableCell>
                   <TableCell>{product.quantity_in_stock}</TableCell>
-                  <TableCell>{product.weight ? `${product.weight} ${product.weight_unit || 'kg'}` : "-"}</TableCell>
                 </TableRow>
               ))
             )}
@@ -450,6 +402,7 @@ const Products = () => {
         title="Product Details"
         fields={detailFields}
         onEdit={handleDetailEdit}
+        onDelete={handleDetailDelete}
       />
     </div>
   );

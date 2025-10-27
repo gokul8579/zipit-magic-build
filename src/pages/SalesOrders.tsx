@@ -11,6 +11,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
+import { SalesOrderProductSelector } from "@/components/SalesOrderProductSelector";
+
 interface SalesOrder {
   id: string;
   order_number: string;
@@ -43,8 +45,8 @@ const SalesOrders = () => {
     discount_amount: "0",
     notes: "",
   });
-  const [lineItems, setLineItems] = useState([
-    { product_id: "", description: "", quantity: 1, unit_price: 0 }
+  const [lineItems, setLineItems] = useState<any[]>([
+    { type: "new", product_id: "", description: "", quantity: 1, unit_price: 0 }
   ]);
 
   useEffect(() => {
@@ -187,7 +189,7 @@ const SalesOrders = () => {
                 customer_id: formData.customer_id || null,
                 status: formData.status as any,
                 order_date: formData.order_date,
-                delivery_date: formData.delivery_date || null,
+                expected_delivery_date: formData.delivery_date || null,
                 cgst_percent: cgstPercent,
                 sgst_percent: sgstPercent,
                 subtotal: subtotal,
@@ -198,7 +200,16 @@ const SalesOrders = () => {
                 user_id: user.id,
               } as any).select().single();
 
-              if (error) throw error;
+              if (error) {
+                if (error.code === '23505') {
+                  toast.error("A sales order with this number already exists");
+                } else if (error.code === '23503') {
+                  toast.error("Invalid customer selected");
+                } else {
+                  toast.error("Failed to create sales order. Please check all fields.");
+                }
+                throw error;
+              }
 
               if (order && lineItems.length > 0) {
                 const items = lineItems.map(item => {
@@ -235,10 +246,10 @@ const SalesOrders = () => {
                 discount_amount: "0",
                 notes: "",
               });
-              setLineItems([{ product_id: "", description: "", quantity: 1, unit_price: 0 }]);
+              setLineItems([{ type: "new", product_id: "", description: "", quantity: 1, unit_price: 0 }]);
               fetchOrders();
-            } catch (err) {
-              toast.error("Error creating sales order");
+            } catch (err: any) {
+              console.error("Error creating sales order:", err);
             }
           }} className="space-y-4">
             <div className="space-y-2">
@@ -292,27 +303,11 @@ const SalesOrders = () => {
               </div>
             </div>
 
+            <SalesOrderProductSelector items={lineItems} onChange={setLineItems} />
+
             <div className="space-y-2">
-              <Label>Line Items</Label>
-              {lineItems.map((item, index) => (
-                <div key={index} className="grid grid-cols-12 gap-2 items-end">
-                  <div className="col-span-6">
-                    <Input placeholder="Product/Service" value={item.description} onChange={(e) => { const ni=[...lineItems]; ni[index].description=e.target.value; setLineItems(ni); }} required />
-                  </div>
-                  <div className="col-span-2">
-                    <Input type="number" placeholder="Qty" value={item.quantity} onChange={(e) => { const ni=[...lineItems]; ni[index].quantity=parseFloat(e.target.value)||1; setLineItems(ni); }} required />
-                  </div>
-                  <div className="col-span-3">
-                    <Input type="number" step="0.01" placeholder="Price (₹)" value={item.unit_price} onChange={(e) => { const ni=[...lineItems]; ni[index].unit_price=parseFloat(e.target.value)||0; setLineItems(ni); }} required />
-                  </div>
-                  <div className="col-span-1">
-                    {lineItems.length > 1 && (
-                      <Button type="button" variant="outline" size="sm" onClick={() => setLineItems(lineItems.filter((_, i) => i !== index))}>Remove</Button>
-                    )}
-                  </div>
-                </div>
-              ))}
-              <Button type="button" variant="outline" size="sm" onClick={() => setLineItems([...lineItems, { product_id: "", description: "", quantity: 1, unit_price: 0 }])}>Add Item</Button>
+              <Label htmlFor="notes">Notes</Label>
+              <Input id="notes" value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} />
             </div>
 
             <div className="flex justify-end gap-2">

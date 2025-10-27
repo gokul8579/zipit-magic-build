@@ -37,13 +37,26 @@ const IndianNumberInput = React.forwardRef<HTMLInputElement, IndianNumberInputPr
       // Remove all non-digit characters except decimal point
       const cleaned = input.replace(/[^\d.]/g, "");
       
+      // Allow typing in progress (like "12." or ".5")
+      if (cleaned === "" || cleaned === ".") {
+        setDisplayValue(input);
+        return;
+      }
+      
       // Parse and validate
       const numValue = parseFloat(cleaned);
       if (!isNaN(numValue)) {
-        const formatted = formatIndianNumber(numValue);
-        setDisplayValue(formatted);
-        onChange?.(numValue.toString());
-        onNumericChange?.(numValue);
+        // If user is still typing decimals, don't format yet
+        if (cleaned.endsWith('.') || (cleaned.includes('.') && cleaned.split('.')[1].length < 2)) {
+          setDisplayValue(cleaned);
+          onChange?.(numValue.toString());
+          onNumericChange?.(numValue);
+        } else {
+          const formatted = formatIndianNumber(numValue);
+          setDisplayValue(formatted);
+          onChange?.(numValue.toString());
+          onNumericChange?.(numValue);
+        }
       }
     };
 
