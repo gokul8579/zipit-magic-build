@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState } from "react";
-import { Pencil } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 
 export interface DetailField {
   label: string;
@@ -23,10 +23,11 @@ interface DetailViewDialogProps {
   title: string;
   fields: DetailField[];
   onEdit?: (updatedData: Record<string, any>) => Promise<void>;
+  onDelete?: () => Promise<void>;
   actions?: React.ReactNode;
 }
 
-export const DetailViewDialog = ({ open, onOpenChange, title, fields, onEdit, actions }: DetailViewDialogProps) => {
+export const DetailViewDialog = ({ open, onOpenChange, title, fields, onEdit, onDelete, actions }: DetailViewDialogProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState<Record<string, any>>({});
   
@@ -168,13 +169,28 @@ export const DetailViewDialog = ({ open, onOpenChange, title, fields, onEdit, ac
           ))}
         </div>
         {isEditing && onEdit && (
-          <div className="flex justify-end gap-2 pt-4 border-t">
-            <Button variant="outline" onClick={handleEditToggle}>
-              Cancel
-            </Button>
-            <Button onClick={handleSave}>
-              Save Changes
-            </Button>
+          <div className="flex justify-between gap-2 pt-4 border-t">
+            <div>
+              {onDelete && (
+                <Button variant="destructive" onClick={async () => {
+                  if (confirm("Are you sure you want to delete this item?")) {
+                    await onDelete();
+                    onOpenChange(false);
+                  }
+                }}>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete
+                </Button>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={handleEditToggle}>
+                Cancel
+              </Button>
+              <Button onClick={handleSave}>
+                Save Changes
+              </Button>
+            </div>
           </div>
         )}
 

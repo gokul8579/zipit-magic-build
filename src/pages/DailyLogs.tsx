@@ -30,6 +30,7 @@ const DailyLogs = () => {
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [editingLog, setEditingLog] = useState<DailyLog | null>(null);
+  const [previousDayLog, setPreviousDayLog] = useState<DailyLog | null>(null);
   const [formData, setFormData] = useState({
     log_date: new Date().toISOString().split('T')[0],
     opening_stock: "",
@@ -127,6 +128,7 @@ const DailyLogs = () => {
 
   const handleEdit = (log: DailyLog) => {
     setEditingLog(log);
+    fetchPreviousDayLog(log.log_date);
     setFormData({
       log_date: log.log_date,
       opening_stock: log.opening_stock.toString(),
@@ -143,6 +145,52 @@ const DailyLogs = () => {
     setOpen(true);
   };
 
+  const fetchPreviousDayLog = async (currentDate: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const date = new Date(currentDate);
+      date.setDate(date.getDate() - 1);
+      const previousDate = date.toISOString().split('T')[0];
+
+      const { data, error } = await supabase
+        .from("daily_logs")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("log_date", previousDate)
+        .single();
+
+      if (!error && data) {
+        setPreviousDayLog(data);
+      } else {
+        setPreviousDayLog(null);
+      }
+    } catch (error) {
+      setPreviousDayLog(null);
+    }
+  };
+
+  const handleOpenDialog = () => {
+    setEditingLog(null);
+    const today = new Date().toISOString().split('T')[0];
+    fetchPreviousDayLog(today);
+    setFormData({
+      log_date: today,
+      opening_stock: "",
+      closing_stock: "",
+      sales_amount: "",
+      expense_amount: "",
+      income_amount: "",
+      number_of_sales: "",
+      number_of_purchases: "",
+      cash_in_hand: "",
+      bank_balance: "",
+      notes: "",
+    });
+    setOpen(true);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -150,23 +198,7 @@ const DailyLogs = () => {
           <h1 className="text-3xl font-bold">Daily Logs</h1>
           <p className="text-muted-foreground">Track your daily business metrics</p>
         </div>
-        <Button onClick={() => {
-          setEditingLog(null);
-          setFormData({
-            log_date: new Date().toISOString().split('T')[0],
-            opening_stock: "",
-            closing_stock: "",
-            sales_amount: "",
-            expense_amount: "",
-            income_amount: "",
-            number_of_sales: "",
-            number_of_purchases: "",
-            cash_in_hand: "",
-            bank_balance: "",
-            notes: "",
-          });
-          setOpen(true);
-        }}>
+        <Button onClick={handleOpenDialog}>
           <Plus className="h-4 w-4 mr-2" />
           Add Daily Log
         </Button>
@@ -204,6 +236,11 @@ const DailyLogs = () => {
                     onChange={(e) => setFormData({ ...formData, opening_stock: e.target.value })}
                     placeholder="0.00"
                   />
+                  {previousDayLog && (
+                    <p className="text-xs text-green-600">
+                      Previous day: ₹{Number(previousDayLog.opening_stock).toLocaleString('en-IN')}
+                    </p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="closing_stock">Closing Stock Value (₹)</Label>
@@ -215,6 +252,11 @@ const DailyLogs = () => {
                     onChange={(e) => setFormData({ ...formData, closing_stock: e.target.value })}
                     placeholder="0.00"
                   />
+                  {previousDayLog && (
+                    <p className="text-xs text-green-600">
+                      Previous day: ₹{Number(previousDayLog.closing_stock).toLocaleString('en-IN')}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -233,6 +275,11 @@ const DailyLogs = () => {
                     onChange={(e) => setFormData({ ...formData, sales_amount: e.target.value })}
                     placeholder="0.00"
                   />
+                  {previousDayLog && (
+                    <p className="text-xs text-green-600">
+                      Previous day: ₹{Number(previousDayLog.sales_amount).toLocaleString('en-IN')}
+                    </p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="number_of_sales">Number of Sales Transactions</Label>
@@ -243,6 +290,11 @@ const DailyLogs = () => {
                     onChange={(e) => setFormData({ ...formData, number_of_sales: e.target.value })}
                     placeholder="0"
                   />
+                  {previousDayLog && (
+                    <p className="text-xs text-green-600">
+                      Previous day: {previousDayLog.number_of_sales}
+                    </p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="income_amount">Total Income/Revenue (₹)</Label>
@@ -254,6 +306,11 @@ const DailyLogs = () => {
                     onChange={(e) => setFormData({ ...formData, income_amount: e.target.value })}
                     placeholder="0.00"
                   />
+                  {previousDayLog && (
+                    <p className="text-xs text-green-600">
+                      Previous day: ₹{Number(previousDayLog.income_amount).toLocaleString('en-IN')}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -272,6 +329,11 @@ const DailyLogs = () => {
                     onChange={(e) => setFormData({ ...formData, expense_amount: e.target.value })}
                     placeholder="0.00"
                   />
+                  {previousDayLog && (
+                    <p className="text-xs text-green-600">
+                      Previous day: ₹{Number(previousDayLog.expense_amount).toLocaleString('en-IN')}
+                    </p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="number_of_purchases">Number of Purchase Transactions</Label>
@@ -282,6 +344,11 @@ const DailyLogs = () => {
                     onChange={(e) => setFormData({ ...formData, number_of_purchases: e.target.value })}
                     placeholder="0"
                   />
+                  {previousDayLog && (
+                    <p className="text-xs text-green-600">
+                      Previous day: {previousDayLog.number_of_purchases}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -300,6 +367,11 @@ const DailyLogs = () => {
                     onChange={(e) => setFormData({ ...formData, cash_in_hand: e.target.value })}
                     placeholder="0.00"
                   />
+                  {previousDayLog && (
+                    <p className="text-xs text-green-600">
+                      Previous day: ₹{Number(previousDayLog.cash_in_hand).toLocaleString('en-IN')}
+                    </p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="bank_balance">Bank Balance (₹)</Label>
@@ -311,6 +383,11 @@ const DailyLogs = () => {
                     onChange={(e) => setFormData({ ...formData, bank_balance: e.target.value })}
                     placeholder="0.00"
                   />
+                  {previousDayLog && (
+                    <p className="text-xs text-green-600">
+                      Previous day: ₹{Number(previousDayLog.bank_balance).toLocaleString('en-IN')}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>

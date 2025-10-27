@@ -31,3 +31,16 @@ export function formatIndianNumber(num: number | null | undefined): string {
 export function formatIndianCurrency(num: number | null | undefined): string {
   return '₹' + formatIndianNumber(num);
 }
+
+/**
+ * Parse Indian formatted number string to number
+ */
+export function parseIndianNumber(value: string | number): number {
+  if (typeof value === 'number') return value;
+  if (!value) return 0;
+  
+  const cleaned = value.toString().replace(/,/g, "");
+  const num = parseFloat(cleaned);
+  
+  return isNaN(num) ? 0 : num;
+}

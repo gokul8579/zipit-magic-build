@@ -41,6 +41,11 @@ const DraggableDeal = ({ deal, onClick }: DraggableDealProps) => {
     opacity: isDragging ? 0.5 : 1,
   };
 
+  const bgColor = 
+    deal.stage === "closed_won" ? "bg-green-100 border-green-300" : 
+    deal.stage === "closed_lost" ? "bg-red-100 border-red-300" : 
+    "";
+
   return (
     <div
       ref={setNodeRef}
@@ -48,7 +53,7 @@ const DraggableDeal = ({ deal, onClick }: DraggableDealProps) => {
       {...attributes}
       {...listeners}
       onClick={onClick}
-      className="p-3 border rounded-lg hover:bg-accent cursor-move transition-colors"
+      className={`p-3 border rounded-lg hover:bg-accent cursor-move transition-colors ${bgColor}`}
     >
       <div className="font-medium text-sm">{deal.title}</div>
       {deal.value && (
@@ -90,6 +95,8 @@ const Pipeline = () => {
   const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [activeDealId, setActiveDealId] = useState<string | null>(null);
+  const [leads, setLeads] = useState<any[]>([]);
+  const [customers, setCustomers] = useState<any[]>([]);
   const [formData, setFormData] = useState({
     title: "",
     stage: "enquiry",
@@ -97,6 +104,8 @@ const Pipeline = () => {
     probability: "50",
     expected_close_date: "",
     notes: "",
+    lead_id: "",
+    customer_id: "",
   });
 
   const sensors = useSensors(
@@ -110,7 +119,25 @@ const Pipeline = () => {
 
   useEffect(() => {
     fetchDeals();
+    fetchLeadsAndCustomers();
   }, []);
+
+  const fetchLeadsAndCustomers = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const [leadsData, customersData] = await Promise.all([
+        supabase.from("leads").select("id, name").eq("user_id", user.id),
+        supabase.from("customers").select("id, name").eq("user_id", user.id)
+      ]);
+
+      setLeads(leadsData.data || []);
+      setCustomers(customersData.data || []);
+    } catch (error) {
+      console.error("Error fetching leads/customers:", error);
+    }
+  };
 
   const fetchDeals = async () => {
     try {
@@ -145,6 +172,8 @@ const Pipeline = () => {
         probability: parseInt(formData.probability),
         expected_close_date: formData.expected_close_date || null,
         notes: formData.notes,
+        lead_id: formData.lead_id || null,
+        customer_id: formData.customer_id || null,
         user_id: user.id,
       }] as any);
 
@@ -159,6 +188,8 @@ const Pipeline = () => {
         probability: "50",
         expected_close_date: "",
         notes: "",
+        lead_id: "",
+        customer_id: "",
       });
       fetchDeals();
     } catch (error: any) {
@@ -335,6 +366,38 @@ const Pipeline = () => {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
+                  <Label htmlFor="lead_id">Related Lead (Optional)</Label>
+                  <Select value={formData.lead_id} onValueChange={(value) => setFormData({ ...formData, lead_id: value })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a lead" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">None</SelectItem>
+                      {leads.map((lead) => (
+                        <SelectItem key={lead.id} value={lead.id}>
+                          {lead.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="customer_id">Related Customer (Optional)</Label>
+                  <Select value={formData.customer_id} onValueChange={(value) => setFormData({ ...formData, customer_id: value })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a customer" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">None</SelectItem>
+                      {customers.map((customer) => (
+                        <SelectItem key={customer.id} value={customer.id}>
+                          {customer.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="stage">Stage</Label>
                   <Select value={formData.stage} onValueChange={(value) => setFormData({ ...formData, stage: value })}>
                     <SelectTrigger>
@@ -425,7 +488,7 @@ const Pipeline = () => {
                       {stage.totalValue.toLocaleString()}
                     </div>
                   </CardHeader>
-                  <CardContent className="flex-1 space-y-2 min-h-[200px]">
+                  <CardContent className="flex-1 space-y-2 min-h-[200px] max-h-[600px] overflow-y-auto">
                     {loading ? (
                       <p className="text-sm text-muted-foreground">Loading...</p>
                     ) : stage.deals.length === 0 ? (

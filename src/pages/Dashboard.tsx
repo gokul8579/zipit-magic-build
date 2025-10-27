@@ -89,8 +89,40 @@ const Dashboard = () => {
           .limit(5),
       ]);
 
+      const activeDeals = deals.data?.filter((d) => d.stage !== "closed_won" && d.stage !== "closed_lost") || [];
       const wonDeals = deals.data?.filter((d) => d.stage === "closed_won") || [];
       const totalRevenue = wonDeals.reduce((sum, deal) => sum + (Number(deal.value) || 0), 0);
+
+      // Fetch real sales orders for revenue trend
+      const { data: salesOrders } = await supabase
+        .from("sales_orders")
+        .select("total_amount, created_at")
+        .eq("user_id", user.id)
+        .neq("status", "cancelled");
+
+      // Group sales by month
+      const monthlyRevenueMap: Record<string, { revenue: number; deals: number }> = {};
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const currentYear = new Date().getFullYear();
+      
+      // Initialize last 6 months
+      for (let i = 5; i >= 0; i--) {
+        const date = new Date();
+        date.setMonth(date.getMonth() - i);
+        const monthKey = months[date.getMonth()];
+        monthlyRevenueMap[monthKey] = { revenue: 0, deals: 0 };
+      }
+
+      salesOrders?.forEach(order => {
+        const date = new Date(order.created_at);
+        if (date.getFullYear() === currentYear) {
+          const monthKey = months[date.getMonth()];
+          if (monthlyRevenueMap[monthKey]) {
+            monthlyRevenueMap[monthKey].revenue += Number(order.total_amount);
+            monthlyRevenueMap[monthKey].deals += 1;
+          }
+        }
+      });
 
       // Calculate analytics data
       const leadSourceCounts: Record<string, number> = {};
@@ -98,8 +130,9 @@ const Dashboard = () => {
         leadSourceCounts[lead.source] = (leadSourceCounts[lead.source] || 0) + 1;
       });
 
+      // Only count active deals for pie chart (exclude closed_won and closed_lost)
       const dealStageCounts: Record<string, number> = {};
-      deals.data?.forEach(deal => {
+      activeDeals.forEach(deal => {
         dealStageCounts[deal.stage] = (dealStageCounts[deal.stage] || 0) + 1;
       });
 
@@ -114,7 +147,7 @@ const Dashboard = () => {
       setStats({
         totalLeads: leads.count || 0,
         totalCustomers: customers.count || 0,
-        totalDeals: deals.data?.length || 0,
+        totalDeals: activeDeals.length, // Only active deals
         wonDeals: wonDeals.length,
         totalRevenue,
         pendingTasks: tasks.count || 0,
@@ -129,12 +162,11 @@ const Dashboard = () => {
           name: name.replace('_', ' ').toUpperCase(), 
           value 
         })),
-        monthlyRevenue: [
-          { month: 'Jan', revenue: totalRevenue * 0.7, deals: Math.floor(wonDeals.length * 0.7) },
-          { month: 'Feb', revenue: totalRevenue * 0.8, deals: Math.floor(wonDeals.length * 0.8) },
-          { month: 'Mar', revenue: totalRevenue * 0.9, deals: Math.floor(wonDeals.length * 0.9) },
-          { month: 'Apr', revenue: totalRevenue, deals: wonDeals.length },
-        ],
+        monthlyRevenue: Object.entries(monthlyRevenueMap).map(([month, data]) => ({
+          month,
+          revenue: data.revenue,
+          deals: data.deals
+        })),
         conversionRate,
         avgDealValue,
         activeCustomers: customers.count || 0,

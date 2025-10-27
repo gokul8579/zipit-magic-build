@@ -15,6 +15,12 @@ interface AdvancedAnalyticsProps {
   data: AnalyticsData;
 }
 
+const STAGE_COLORS: Record<string, string> = {
+  "ENQUIRY": "#3b82f6", // blue
+  "PROPOSAL": "#eab308", // yellow
+  "NEGOTIATION": "#f97316", // orange
+};
+
 const COLORS = [
   "hsl(var(--chart-1))",
   "hsl(var(--chart-2))",
@@ -125,7 +131,10 @@ export const AdvancedAnalytics = ({ data }: AdvancedAnalyticsProps) => {
                   dataKey="value"
                 >
                   {data.dealsByStage.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    <Cell 
+                      key={`cell-${index}`} 
+                      fill={STAGE_COLORS[entry.name] || COLORS[index % COLORS.length]} 
+                    />
                   ))}
                 </Pie>
                 <Tooltip 
