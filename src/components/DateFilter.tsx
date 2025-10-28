@@ -1,28 +1,34 @@
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 interface DateFilterProps {
-  value: string;
-  onChange: (value: string) => void;
+  startDate: string;
+  endDate: string;
+  onStartDateChange: (value: string) => void;
+  onEndDateChange: (value: string) => void;
 }
 
-export const DateFilter = ({ value, onChange }: DateFilterProps) => {
+export const DateFilter = ({ startDate, endDate, onStartDateChange, onEndDateChange }: DateFilterProps) => {
   return (
     <div className="flex items-center gap-2">
-      <Calendar className="h-4 w-4 text-muted-foreground" />
-      <Select value={value} onValueChange={onChange}>
-        <SelectTrigger className="w-[150px]">
-          <SelectValue placeholder="Date range" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">All Time</SelectItem>
-          <SelectItem value="today">Today</SelectItem>
-          <SelectItem value="week">This Week</SelectItem>
-          <SelectItem value="month">This Month</SelectItem>
-          <SelectItem value="quarter">This Quarter</SelectItem>
-          <SelectItem value="year">This Year</SelectItem>
-        </SelectContent>
-      </Select>
+      <div className="space-y-1">
+        <Label className="text-xs">From</Label>
+        <Input
+          type="date"
+          value={startDate}
+          onChange={(e) => onStartDateChange(e.target.value)}
+          className="w-40"
+        />
+      </div>
+      <div className="space-y-1">
+        <Label className="text-xs">To</Label>
+        <Input
+          type="date"
+          value={endDate}
+          onChange={(e) => onEndDateChange(e.target.value)}
+          className="w-40"
+        />
+      </div>
     </div>
   );
 };

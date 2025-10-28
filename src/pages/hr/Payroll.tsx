@@ -9,8 +9,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, DollarSign, Eye } from "lucide-react";
-import { DetailViewDialog, DetailField } from "@/components/DetailViewDialog";
+import { Plus, DollarSign } from "lucide-react";
+import { IndianNumberInput } from "@/components/ui/indian-number-input";
+import { formatIndianCurrency } from "@/lib/formatUtils";
+import { SearchFilter } from "@/components/SearchFilter";
 
 interface PayrollRecord {
   id: string;
@@ -35,11 +37,12 @@ interface Employee {
 
 const Payroll = () => {
   const [payroll, setPayroll] = useState<PayrollRecord[]>([]);
+  const [filteredPayroll, setFilteredPayroll] = useState<PayrollRecord[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
-  const [selectedPayroll, setSelectedPayroll] = useState<PayrollRecord | null>(null);
-  const [detailOpen, setDetailOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterField, setFilterField] = useState("employee_id");
   const [formData, setFormData] = useState({
     employee_id: "",
     month: new Date().getMonth() + 1,
@@ -49,12 +52,29 @@ const Payroll = () => {
     deductions: "",
     payment_date: "",
     notes: "",
+    payment_frequency: "monthly",
   });
 
   useEffect(() => {
     fetchPayroll();
     fetchEmployees();
   }, []);
+
+  useEffect(() => {
+    if (searchTerm) {
+      const filtered = payroll.filter((record) => {
+        const value = filterField === "employee_id"
+          ? getEmployeeName(record.employee_id).toLowerCase()
+          : filterField === "status"
+          ? record.status.toLowerCase()
+          : String(record[filterField as keyof PayrollRecord] || "").toLowerCase();
+        return value.includes(searchTerm.toLowerCase());
+      });
+      setFilteredPayroll(filtered);
+    } else {
+      setFilteredPayroll(payroll);
+    }
+  }, [searchTerm, filterField, payroll]);
 
   const fetchPayroll = async () => {
     try {
@@ -69,6 +89,7 @@ const Payroll = () => {
 
       if (error) throw error;
       setPayroll(data || []);
+      setFilteredPayroll(data || []);
     } catch (error: any) {
       toast.error("Error fetching payroll");
     } finally {
@@ -103,22 +124,32 @@ const Payroll = () => {
     });
   };
 
+  const calculateSalary = () => {
+    const basicSalary = parseFloat(formData.basic_salary) || 0;
+    if (formData.payment_frequency === "daily") {
+      return basicSalary / 30;
+    } else if (formData.payment_frequency === "weekly") {
+      return basicSalary / 4;
+    }
+    return basicSalary;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const basicSalary = parseFloat(formData.basic_salary);
+      const calculatedSalary = calculateSalary();
       const allowances = parseFloat(formData.allowances) || 0;
       const deductions = parseFloat(formData.deductions) || 0;
-      const netSalary = basicSalary + allowances - deductions;
+      const netSalary = calculatedSalary + allowances - deductions;
 
       const { error } = await supabase.from("payroll").insert([{
         employee_id: formData.employee_id,
         month: formData.month,
         year: formData.year,
-        basic_salary: basicSalary,
+        basic_salary: calculatedSalary,
         allowances,
         deductions,
         net_salary: netSalary,
@@ -140,6 +171,7 @@ const Payroll = () => {
         deductions: "",
         payment_date: "",
         notes: "",
+        payment_frequency: "monthly",
       });
       fetchPayroll();
     } catch (error: any) {
@@ -155,7 +187,6 @@ const Payroll = () => {
     const emp = employees.find(e => e.id === empId);
     return emp ? `${emp.first_name} ${emp.last_name}` : "-";
   };
-
 
   return (
     <div className="space-y-6">
@@ -219,37 +250,50 @@ const Payroll = () => {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="basic_salary">Basic Salary (₹) *</Label>
-                <Input
+                <Label htmlFor="payment_frequency">Payment Frequency *</Label>
+                <Select value={formData.payment_frequency} onValueChange={(value) => setFormData({ ...formData, payment_frequency: value })}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="daily">Daily (Salary / 30)</SelectItem>
+                    <SelectItem value="weekly">Weekly (Salary / 4)</SelectItem>
+                    <SelectItem value="monthly">Monthly (Full Salary)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="basic_salary">Monthly Base Salary (₹) *</Label>
+                <IndianNumberInput
                   id="basic_salary"
-                  type="number"
-                  step="0.01"
                   value={formData.basic_salary}
-                  onChange={(e) => setFormData({ ...formData, basic_salary: e.target.value })}
+                  onChange={(value) => setFormData({ ...formData, basic_salary: value })}
+                  placeholder="0"
                   required
                 />
+                {formData.basic_salary && formData.payment_frequency !== "monthly" && (
+                  <p className="text-sm text-green-600">
+                    Calculated: {formatIndianCurrency(calculateSalary())}
+                  </p>
+                )}
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="allowances">Allowances (₹)</Label>
-                  <Input
+                  <IndianNumberInput
                     id="allowances"
-                    type="number"
-                    step="0.01"
                     value={formData.allowances}
-                    onChange={(e) => setFormData({ ...formData, allowances: e.target.value })}
-                    placeholder="0.00"
+                    onChange={(value) => setFormData({ ...formData, allowances: value })}
+                    placeholder="0"
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="deductions">Deductions (₹)</Label>
-                  <Input
+                  <IndianNumberInput
                     id="deductions"
-                    type="number"
-                    step="0.01"
                     value={formData.deductions}
-                    onChange={(e) => setFormData({ ...formData, deductions: e.target.value })}
-                    placeholder="0.00"
+                    onChange={(value) => setFormData({ ...formData, deductions: value })}
+                    placeholder="0"
                   />
                 </div>
               </div>
@@ -282,6 +326,18 @@ const Payroll = () => {
         </Dialog>
       </div>
 
+      <SearchFilter
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        filterField={filterField}
+        onFilterFieldChange={setFilterField}
+        filterOptions={[
+          { value: "employee_id", label: "Employee" },
+          { value: "status", label: "Status" },
+        ]}
+        placeholder="Search payroll..."
+      />
+
       <div className="border rounded-lg">
         <Table>
           <TableHeader>
@@ -297,26 +353,26 @@ const Payroll = () => {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center">Loading...</TableCell>
+                <TableCell colSpan={6} className="text-center">Loading...</TableCell>
               </TableRow>
-            ) : payroll.length === 0 ? (
+            ) : filteredPayroll.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} className="text-center text-muted-foreground py-12">
+                <TableCell colSpan={6} className="text-center text-muted-foreground py-12">
                   <div className="flex flex-col items-center gap-2">
                     <DollarSign className="h-12 w-12 text-muted-foreground/50" />
-                    <p>No payroll records yet</p>
+                    <p>No payroll records found</p>
                   </div>
                 </TableCell>
               </TableRow>
             ) : (
-              payroll.map((record) => (
+              filteredPayroll.map((record) => (
                 <TableRow key={record.id}>
                   <TableCell className="font-medium">{getEmployeeName(record.employee_id)}</TableCell>
                   <TableCell className="text-sm">
                     {new Date(record.year, record.month - 1).toLocaleDateString('default', { month: 'long', year: 'numeric' })}
                   </TableCell>
-                  <TableCell>₹{Number(record.basic_salary).toLocaleString()}</TableCell>
-                  <TableCell className="font-semibold">₹{Number(record.net_salary).toLocaleString()}</TableCell>
+                  <TableCell>{formatIndianCurrency(record.basic_salary)}</TableCell>
+                  <TableCell className="font-semibold">{formatIndianCurrency(record.net_salary)}</TableCell>
                   <TableCell>
                     <Badge variant="outline" className={getStatusColor(record.status)}>
                       {record.status}
@@ -333,7 +389,7 @@ const Payroll = () => {
                             .eq("id", record.id);
                           
                           if (error) throw error;
-                          toast.success("Status updated successfully!");
+                          toast.success("Status updated!");
                           fetchPayroll();
                         } catch (error: any) {
                           toast.error("Error updating status");
@@ -349,43 +405,12 @@ const Payroll = () => {
                       </SelectContent>
                     </Select>
                   </TableCell>
-                  <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setSelectedPayroll(record);
-                        setDetailOpen(true);
-                      }}
-                    >
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
                 </TableRow>
               ))
             )}
           </TableBody>
         </Table>
       </div>
-
-      {selectedPayroll && (
-        <DetailViewDialog
-          open={detailOpen}
-          onOpenChange={setDetailOpen}
-          title="Payroll Details"
-          fields={[
-            { label: "Employee", value: getEmployeeName(selectedPayroll.employee_id) },
-            { label: "Period", value: new Date(selectedPayroll.year, selectedPayroll.month - 1).toLocaleDateString('default', { month: 'long', year: 'numeric' }) },
-            { label: "Basic Salary", value: `₹${Number(selectedPayroll.basic_salary).toLocaleString()}` },
-            { label: "Allowances", value: `₹${Number(selectedPayroll.allowances).toLocaleString()}` },
-            { label: "Deductions", value: `₹${Number(selectedPayroll.deductions).toLocaleString()}` },
-            { label: "Net Salary", value: `₹${Number(selectedPayroll.net_salary).toLocaleString()}` },
-            { label: "Payment Date", value: selectedPayroll.payment_date, type: "date" },
-            { label: "Notes", value: selectedPayroll.notes },
-            { label: "Status", value: selectedPayroll.status, type: "badge", badgeColor: getStatusColor(selectedPayroll.status) },
-          ]}
-        />
-      )}
     </div>
   );
 };

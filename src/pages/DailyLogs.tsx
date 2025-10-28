@@ -7,7 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Plus, Calendar } from "lucide-react";
+import { Plus, Calendar, Trash2 } from "lucide-react";
+import { SearchFilter } from "@/components/SearchFilter";
+import { IndianNumberInput } from "@/components/ui/indian-number-input";
+import { formatIndianCurrency } from "@/lib/formatUtils";
+import { DateFilter } from "@/components/DateFilter";
 
 interface DailyLog {
   id: string;
@@ -25,18 +29,28 @@ interface DailyLog {
   created_at: string;
 }
 
+interface ExpenseItem {
+  description: string;
+  amount: string;
+}
+
 const DailyLogs = () => {
   const [logs, setLogs] = useState<DailyLog[]>([]);
+  const [filteredLogs, setFilteredLogs] = useState<DailyLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [editingLog, setEditingLog] = useState<DailyLog | null>(null);
   const [previousDayLog, setPreviousDayLog] = useState<DailyLog | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterField, setFilterField] = useState("log_date");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [expenseItems, setExpenseItems] = useState<ExpenseItem[]>([{ description: "", amount: "" }]);
   const [formData, setFormData] = useState({
     log_date: new Date().toISOString().split('T')[0],
     opening_stock: "",
     closing_stock: "",
     sales_amount: "",
-    expense_amount: "",
     income_amount: "",
     number_of_sales: "",
     number_of_purchases: "",
@@ -48,6 +62,26 @@ const DailyLogs = () => {
   useEffect(() => {
     fetchLogs();
   }, []);
+
+  useEffect(() => {
+    let filtered = logs;
+    
+    if (startDate && endDate) {
+      filtered = filtered.filter(log => {
+        const logDate = new Date(log.log_date);
+        return logDate >= new Date(startDate) && logDate <= new Date(endDate);
+      });
+    }
+
+    if (searchTerm) {
+      filtered = filtered.filter((log) => {
+        const value = String(log[filterField as keyof DailyLog] || "").toLowerCase();
+        return value.includes(searchTerm.toLowerCase());
+      });
+    }
+    
+    setFilteredLogs(filtered);
+  }, [searchTerm, filterField, logs, startDate, endDate]);
 
   const fetchLogs = async () => {
     try {
@@ -62,11 +96,16 @@ const DailyLogs = () => {
 
       if (error) throw error;
       setLogs(data || []);
+      setFilteredLogs(data || []);
     } catch (error: any) {
       toast.error("Error fetching daily logs");
     } finally {
       setLoading(false);
     }
+  };
+
+  const calculateTotalExpense = () => {
+    return expenseItems.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -75,19 +114,25 @@ const DailyLogs = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      const totalExpense = calculateTotalExpense();
+      const expenseDetails = expenseItems
+        .filter(item => item.description && item.amount)
+        .map(item => `${item.description}: ₹${item.amount}`)
+        .join("; ");
+
       const logData = {
         user_id: user.id,
         log_date: formData.log_date,
         opening_stock: Number(formData.opening_stock) || 0,
         closing_stock: Number(formData.closing_stock) || 0,
         sales_amount: Number(formData.sales_amount) || 0,
-        expense_amount: Number(formData.expense_amount) || 0,
+        expense_amount: totalExpense,
         income_amount: Number(formData.income_amount) || 0,
         number_of_sales: Number(formData.number_of_sales) || 0,
         number_of_purchases: Number(formData.number_of_purchases) || 0,
         cash_in_hand: Number(formData.cash_in_hand) || 0,
         bank_balance: Number(formData.bank_balance) || 0,
-        notes: formData.notes || null,
+        notes: formData.notes ? `${formData.notes}\nExpenses: ${expenseDetails}` : `Expenses: ${expenseDetails}`,
       };
 
       let error;
@@ -107,23 +152,28 @@ const DailyLogs = () => {
       toast.success(editingLog ? "Daily log updated successfully" : "Daily log added successfully");
       setOpen(false);
       setEditingLog(null);
-      setFormData({
-        log_date: new Date().toISOString().split('T')[0],
-        opening_stock: "",
-        closing_stock: "",
-        sales_amount: "",
-        expense_amount: "",
-        income_amount: "",
-        number_of_sales: "",
-        number_of_purchases: "",
-        cash_in_hand: "",
-        bank_balance: "",
-        notes: "",
-      });
+      resetForm();
       fetchLogs();
     } catch (error: any) {
       toast.error(error.message || "Error saving daily log");
     }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      log_date: new Date().toISOString().split('T')[0],
+      opening_stock: "",
+      closing_stock: "",
+      sales_amount: "",
+      income_amount: "",
+      number_of_sales: "",
+      number_of_purchases: "",
+      cash_in_hand: "",
+      bank_balance: "",
+      notes: "",
+    });
+    setExpenseItems([{ description: "", amount: "" }]);
+    setPreviousDayLog(null);
   };
 
   const handleEdit = (log: DailyLog) => {
@@ -134,7 +184,6 @@ const DailyLogs = () => {
       opening_stock: log.opening_stock.toString(),
       closing_stock: log.closing_stock.toString(),
       sales_amount: log.sales_amount.toString(),
-      expense_amount: log.expense_amount.toString(),
       income_amount: log.income_amount.toString(),
       number_of_sales: log.number_of_sales.toString(),
       number_of_purchases: log.number_of_purchases.toString(),
@@ -159,7 +208,7 @@ const DailyLogs = () => {
         .select("*")
         .eq("user_id", user.id)
         .eq("log_date", previousDate)
-        .single();
+        .maybeSingle();
 
       if (!error && data) {
         setPreviousDayLog(data);
@@ -175,20 +224,22 @@ const DailyLogs = () => {
     setEditingLog(null);
     const today = new Date().toISOString().split('T')[0];
     fetchPreviousDayLog(today);
-    setFormData({
-      log_date: today,
-      opening_stock: "",
-      closing_stock: "",
-      sales_amount: "",
-      expense_amount: "",
-      income_amount: "",
-      number_of_sales: "",
-      number_of_purchases: "",
-      cash_in_hand: "",
-      bank_balance: "",
-      notes: "",
-    });
+    resetForm();
     setOpen(true);
+  };
+
+  const addExpenseItem = () => {
+    setExpenseItems([...expenseItems, { description: "", amount: "" }]);
+  };
+
+  const removeExpenseItem = (index: number) => {
+    setExpenseItems(expenseItems.filter((_, i) => i !== index));
+  };
+
+  const updateExpenseItem = (index: number, field: "description" | "amount", value: string) => {
+    const updated = [...expenseItems];
+    updated[index][field] = value;
+    setExpenseItems(updated);
   };
 
   return (
@@ -200,206 +251,210 @@ const DailyLogs = () => {
         </div>
         <Button onClick={handleOpenDialog}>
           <Plus className="h-4 w-4 mr-2" />
-          Add Daily Log
+          Add Log
         </Button>
+      </div>
+
+      <div className="flex gap-4 flex-wrap">
+        <SearchFilter
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+          filterField={filterField}
+          onFilterFieldChange={setFilterField}
+          filterOptions={[
+            { value: "log_date", label: "Date" },
+            { value: "sales_amount", label: "Sales" },
+          ]}
+          placeholder="Search logs..."
+        />
+        <DateFilter
+          startDate={startDate}
+          endDate={endDate}
+          onStartDateChange={setStartDate}
+          onEndDateChange={setEndDate}
+        />
       </div>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editingLog ? "Edit Daily Log" : "Add Daily Log"}</DialogTitle>
+            <DialogTitle>{editingLog ? "Edit" : "Add"} Daily Log</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Date */}
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="log_date" className="text-base font-semibold">Date *</Label>
+              <Label htmlFor="log_date">Date *</Label>
               <Input
                 id="log_date"
                 type="date"
                 value={formData.log_date}
-                onChange={(e) => setFormData({ ...formData, log_date: e.target.value })}
+                onChange={(e) => {
+                  setFormData({ ...formData, log_date: e.target.value });
+                  fetchPreviousDayLog(e.target.value);
+                }}
                 required
               />
             </div>
-
-            {/* Stock Information */}
-            <div className="space-y-4">
-              <h3 className="text-base font-semibold border-b pb-2">Stock Information</h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="opening_stock">Opening Stock Value (₹)</Label>
-                  <Input
-                    id="opening_stock"
-                    type="number"
-                    step="0.01"
-                    value={formData.opening_stock}
-                    onChange={(e) => setFormData({ ...formData, opening_stock: e.target.value })}
-                    placeholder="0.00"
-                  />
-                  {previousDayLog && (
-                    <p className="text-xs text-green-600">
-                      Previous day: ₹{Number(previousDayLog.opening_stock).toLocaleString('en-IN')}
-                    </p>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="closing_stock">Closing Stock Value (₹)</Label>
-                  <Input
-                    id="closing_stock"
-                    type="number"
-                    step="0.01"
-                    value={formData.closing_stock}
-                    onChange={(e) => setFormData({ ...formData, closing_stock: e.target.value })}
-                    placeholder="0.00"
-                  />
-                  {previousDayLog && (
-                    <p className="text-xs text-green-600">
-                      Previous day: ₹{Number(previousDayLog.closing_stock).toLocaleString('en-IN')}
-                    </p>
-                  )}
-                </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="opening_stock">Opening Stock (₹)</Label>
+                <IndianNumberInput
+                  id="opening_stock"
+                  value={formData.opening_stock}
+                  onChange={(value) => setFormData({ ...formData, opening_stock: value })}
+                />
+                {previousDayLog && (
+                  <p className="text-xs text-green-600">
+                    Previous: {formatIndianCurrency(previousDayLog.opening_stock)}
+                  </p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="closing_stock">Closing Stock (₹)</Label>
+                <IndianNumberInput
+                  id="closing_stock"
+                  value={formData.closing_stock}
+                  onChange={(value) => setFormData({ ...formData, closing_stock: value })}
+                />
+                {previousDayLog && (
+                  <p className="text-xs text-green-600">
+                    Previous: {formatIndianCurrency(previousDayLog.closing_stock)}
+                  </p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="sales_amount">Sales Amount (₹)</Label>
+                <IndianNumberInput
+                  id="sales_amount"
+                  value={formData.sales_amount}
+                  onChange={(value) => setFormData({ ...formData, sales_amount: value })}
+                />
+                {previousDayLog && (
+                  <p className="text-xs text-green-600">
+                    Previous: {formatIndianCurrency(previousDayLog.sales_amount)}
+                  </p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="income_amount">Income Amount (₹)</Label>
+                <IndianNumberInput
+                  id="income_amount"
+                  value={formData.income_amount}
+                  onChange={(value) => setFormData({ ...formData, income_amount: value })}
+                />
+                {previousDayLog && (
+                  <p className="text-xs text-green-600">
+                    Previous: {formatIndianCurrency(previousDayLog.income_amount)}
+                  </p>
+                )}
               </div>
             </div>
 
-            {/* Sales & Revenue */}
-            <div className="space-y-4">
-              <h3 className="text-base font-semibold border-b pb-2">Sales & Revenue</h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="sales_amount">Total Sales Amount (₹)</Label>
-                  <Input
-                    id="sales_amount"
-                    type="number"
-                    step="0.01"
-                    value={formData.sales_amount}
-                    onChange={(e) => setFormData({ ...formData, sales_amount: e.target.value })}
-                    placeholder="0.00"
-                  />
-                  {previousDayLog && (
-                    <p className="text-xs text-green-600">
-                      Previous day: ₹{Number(previousDayLog.sales_amount).toLocaleString('en-IN')}
-                    </p>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="number_of_sales">Number of Sales Transactions</Label>
-                  <Input
-                    id="number_of_sales"
-                    type="number"
-                    value={formData.number_of_sales}
-                    onChange={(e) => setFormData({ ...formData, number_of_sales: e.target.value })}
-                    placeholder="0"
-                  />
-                  {previousDayLog && (
-                    <p className="text-xs text-green-600">
-                      Previous day: {previousDayLog.number_of_sales}
-                    </p>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="income_amount">Total Income/Revenue (₹)</Label>
-                  <Input
-                    id="income_amount"
-                    type="number"
-                    step="0.01"
-                    value={formData.income_amount}
-                    onChange={(e) => setFormData({ ...formData, income_amount: e.target.value })}
-                    placeholder="0.00"
-                  />
-                  {previousDayLog && (
-                    <p className="text-xs text-green-600">
-                      Previous day: ₹{Number(previousDayLog.income_amount).toLocaleString('en-IN')}
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Expenses & Purchases */}
-            <div className="space-y-4">
-              <h3 className="text-base font-semibold border-b pb-2">Expenses & Purchases</h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="expense_amount">Total Expenses (₹)</Label>
-                  <Input
-                    id="expense_amount"
-                    type="number"
-                    step="0.01"
-                    value={formData.expense_amount}
-                    onChange={(e) => setFormData({ ...formData, expense_amount: e.target.value })}
-                    placeholder="0.00"
-                  />
-                  {previousDayLog && (
-                    <p className="text-xs text-green-600">
-                      Previous day: ₹{Number(previousDayLog.expense_amount).toLocaleString('en-IN')}
-                    </p>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="number_of_purchases">Number of Purchase Transactions</Label>
-                  <Input
-                    id="number_of_purchases"
-                    type="number"
-                    value={formData.number_of_purchases}
-                    onChange={(e) => setFormData({ ...formData, number_of_purchases: e.target.value })}
-                    placeholder="0"
-                  />
-                  {previousDayLog && (
-                    <p className="text-xs text-green-600">
-                      Previous day: {previousDayLog.number_of_purchases}
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Cash & Banking */}
-            <div className="space-y-4">
-              <h3 className="text-base font-semibold border-b pb-2">Cash & Banking</h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="cash_in_hand">Cash in Hand (₹)</Label>
-                  <Input
-                    id="cash_in_hand"
-                    type="number"
-                    step="0.01"
-                    value={formData.cash_in_hand}
-                    onChange={(e) => setFormData({ ...formData, cash_in_hand: e.target.value })}
-                    placeholder="0.00"
-                  />
-                  {previousDayLog && (
-                    <p className="text-xs text-green-600">
-                      Previous day: ₹{Number(previousDayLog.cash_in_hand).toLocaleString('en-IN')}
-                    </p>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="bank_balance">Bank Balance (₹)</Label>
-                  <Input
-                    id="bank_balance"
-                    type="number"
-                    step="0.01"
-                    value={formData.bank_balance}
-                    onChange={(e) => setFormData({ ...formData, bank_balance: e.target.value })}
-                    placeholder="0.00"
-                  />
-                  {previousDayLog && (
-                    <p className="text-xs text-green-600">
-                      Previous day: ₹{Number(previousDayLog.bank_balance).toLocaleString('en-IN')}
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Notes */}
             <div className="space-y-2">
-              <Label htmlFor="notes">Additional Notes</Label>
+              <div className="flex justify-between items-center">
+                <Label>Expenses</Label>
+                <Button type="button" size="sm" variant="outline" onClick={addExpenseItem}>
+                  <Plus className="h-3 w-3 mr-1" />
+                  Add Expense
+                </Button>
+              </div>
+              {expenseItems.map((item, index) => (
+                <div key={index} className="flex gap-2">
+                  <Input
+                    placeholder="Expense description"
+                    value={item.description}
+                    onChange={(e) => updateExpenseItem(index, "description", e.target.value)}
+                    className="flex-1"
+                  />
+                  <IndianNumberInput
+                    placeholder="Amount"
+                    value={item.amount}
+                    onChange={(value) => updateExpenseItem(index, "amount", value)}
+                    className="w-40"
+                  />
+                  {expenseItems.length > 1 && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => removeExpenseItem(index)}
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  )}
+                </div>
+              ))}
+              <p className="text-sm font-medium">
+                Total Expense: {formatIndianCurrency(calculateTotalExpense())}
+              </p>
+              {previousDayLog && (
+                <p className="text-xs text-green-600">
+                  Previous: {formatIndianCurrency(previousDayLog.expense_amount)}
+                </p>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="number_of_sales">Number of Sales</Label>
+                <Input
+                  id="number_of_sales"
+                  type="number"
+                  value={formData.number_of_sales}
+                  onChange={(e) => setFormData({ ...formData, number_of_sales: e.target.value })}
+                />
+                {previousDayLog && (
+                  <p className="text-xs text-green-600">
+                    Previous: {previousDayLog.number_of_sales}
+                  </p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="number_of_purchases">Number of Purchases</Label>
+                <Input
+                  id="number_of_purchases"
+                  type="number"
+                  value={formData.number_of_purchases}
+                  onChange={(e) => setFormData({ ...formData, number_of_purchases: e.target.value })}
+                />
+                {previousDayLog && (
+                  <p className="text-xs text-green-600">
+                    Previous: {previousDayLog.number_of_purchases}
+                  </p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="cash_in_hand">Cash in Hand (₹)</Label>
+                <IndianNumberInput
+                  id="cash_in_hand"
+                  value={formData.cash_in_hand}
+                  onChange={(value) => setFormData({ ...formData, cash_in_hand: value })}
+                />
+                {previousDayLog && (
+                  <p className="text-xs text-green-600">
+                    Previous: {formatIndianCurrency(previousDayLog.cash_in_hand)}
+                  </p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="bank_balance">Bank Balance (₹)</Label>
+                <IndianNumberInput
+                  id="bank_balance"
+                  value={formData.bank_balance}
+                  onChange={(value) => setFormData({ ...formData, bank_balance: value })}
+                />
+                {previousDayLog && (
+                  <p className="text-xs text-green-600">
+                    Previous: {formatIndianCurrency(previousDayLog.bank_balance)}
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="notes">Notes</Label>
               <Textarea
                 id="notes"
                 value={formData.notes}
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                placeholder="Additional notes for the day..."
                 rows={3}
               />
             </div>
@@ -421,42 +476,37 @@ const DailyLogs = () => {
               <TableHead>Sales</TableHead>
               <TableHead>Expenses</TableHead>
               <TableHead>Income</TableHead>
-              <TableHead># Sales</TableHead>
-              <TableHead>Closing Stock</TableHead>
               <TableHead>Cash</TableHead>
-              <TableHead>Bank</TableHead>
+              <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center">Loading...</TableCell>
+                <TableCell colSpan={6} className="text-center">Loading...</TableCell>
               </TableRow>
-            ) : logs.length === 0 ? (
+            ) : filteredLogs.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center text-muted-foreground py-12">
+                <TableCell colSpan={6} className="text-center text-muted-foreground py-12">
                   <div className="flex flex-col items-center gap-2">
                     <Calendar className="h-12 w-12 text-muted-foreground/50" />
-                    <p>No daily logs yet</p>
-                    <p className="text-sm">Start tracking your daily business metrics</p>
+                    <p>No daily logs found</p>
                   </div>
                 </TableCell>
               </TableRow>
             ) : (
-              logs.map((log) => (
-                <TableRow 
-                  key={log.id} 
-                  className="cursor-pointer hover:bg-muted/50"
-                  onClick={() => handleEdit(log)}
-                >
-                  <TableCell>{new Date(log.log_date).toLocaleDateString()}</TableCell>
-                  <TableCell>₹{Number(log.sales_amount).toLocaleString()}</TableCell>
-                  <TableCell>₹{Number(log.expense_amount).toLocaleString()}</TableCell>
-                  <TableCell>₹{Number(log.income_amount).toLocaleString()}</TableCell>
-                  <TableCell>{log.number_of_sales}</TableCell>
-                  <TableCell>₹{Number(log.closing_stock).toLocaleString()}</TableCell>
-                  <TableCell>₹{Number(log.cash_in_hand).toLocaleString()}</TableCell>
-                  <TableCell>₹{Number(log.bank_balance).toLocaleString()}</TableCell>
+              filteredLogs.map((log) => (
+                <TableRow key={log.id} className="cursor-pointer" onClick={() => handleEdit(log)}>
+                  <TableCell className="font-medium">{new Date(log.log_date).toLocaleDateString()}</TableCell>
+                  <TableCell>{formatIndianCurrency(log.sales_amount)}</TableCell>
+                  <TableCell>{formatIndianCurrency(log.expense_amount)}</TableCell>
+                  <TableCell>{formatIndianCurrency(log.income_amount)}</TableCell>
+                  <TableCell>{formatIndianCurrency(log.cash_in_hand)}</TableCell>
+                  <TableCell>
+                    <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleEdit(log); }}>
+                      Edit
+                    </Button>
+                  </TableCell>
                 </TableRow>
               ))
             )}

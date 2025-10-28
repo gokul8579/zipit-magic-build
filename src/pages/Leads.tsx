@@ -178,6 +178,25 @@ const Leads = () => {
     }
   };
 
+  const handleDetailDelete = async () => {
+    if (!selectedLead) return;
+
+    try {
+      const { error } = await supabase
+        .from("leads")
+        .delete()
+        .eq("id", selectedLead.id);
+
+      if (error) throw error;
+
+      toast.success("Lead deleted successfully!");
+      fetchLeads();
+      setDetailOpen(false);
+    } catch (error: any) {
+      toast.error("Error deleting lead");
+    }
+  };
+
   const detailFields: DetailField[] = selectedLead ? [
     { label: "Name", value: selectedLead.name, type: "text", fieldName: "name" },
     { label: "Email", value: selectedLead.email, type: "text", fieldName: "email" },
@@ -411,6 +430,7 @@ const Leads = () => {
         title="Lead Details"
         fields={detailFields}
         onEdit={handleDetailEdit}
+        onDelete={handleDetailDelete}
         actions={
           selectedLead && (
             <Button onClick={() => handleConvertToCustomer(selectedLead.id)}>
