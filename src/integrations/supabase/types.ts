@@ -802,6 +802,93 @@ export type Database = {
         }
         Relationships: []
       }
+      purchase_order_items: {
+        Row: {
+          amount: number
+          created_at: string
+          description: string
+          id: string
+          product_id: string | null
+          purchase_order_id: string
+          quantity: number
+          tax_amount: number
+          unit_price: number
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          description: string
+          id?: string
+          product_id?: string | null
+          purchase_order_id: string
+          quantity?: number
+          tax_amount?: number
+          unit_price: number
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          description?: string
+          id?: string
+          product_id?: string | null
+          purchase_order_id?: string
+          quantity?: number
+          tax_amount?: number
+          unit_price?: number
+        }
+        Relationships: []
+      }
+      purchase_orders: {
+        Row: {
+          created_at: string
+          discount_amount: number
+          expected_delivery_date: string | null
+          id: string
+          notes: string | null
+          order_date: string
+          po_number: string
+          status: string
+          subtotal: number
+          tax_amount: number
+          total_amount: number
+          updated_at: string
+          user_id: string
+          vendor_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          discount_amount?: number
+          expected_delivery_date?: string | null
+          id?: string
+          notes?: string | null
+          order_date?: string
+          po_number: string
+          status?: string
+          subtotal?: number
+          tax_amount?: number
+          total_amount?: number
+          updated_at?: string
+          user_id: string
+          vendor_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          discount_amount?: number
+          expected_delivery_date?: string | null
+          id?: string
+          notes?: string | null
+          order_date?: string
+          po_number?: string
+          status?: string
+          subtotal?: number
+          tax_amount?: number
+          total_amount?: number
+          updated_at?: string
+          user_id?: string
+          vendor_id?: string | null
+        }
+        Relationships: []
+      }
       quotation_items: {
         Row: {
           amount: number

@@ -1,6 +1,8 @@
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search } from "lucide-react";
+import { useEffect, useState, useCallback } from "react";
+import { useDebouncedCallback } from "use-debounce";
 
 interface SearchFilterProps {
   searchTerm: string;
@@ -19,14 +21,31 @@ export const SearchFilter = ({
   filterOptions,
   placeholder = "Search...",
 }: SearchFilterProps) => {
+  const [localSearch, setLocalSearch] = useState(searchTerm);
+
+  // Debounced search - triggers after 300ms of no typing
+  const debouncedSearch = useDebouncedCallback((value: string) => {
+    onSearchChange(value);
+  }, 300);
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setLocalSearch(value);
+    debouncedSearch(value);
+  };
+
+  useEffect(() => {
+    setLocalSearch(searchTerm);
+  }, [searchTerm]);
+
   return (
-    <div className="flex gap-2 items-center">
-      <div className="relative flex-1 max-w-sm">
+    <div className="flex gap-2 items-center flex-wrap">
+      <div className="relative flex-1 min-w-[200px] max-w-sm">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
           placeholder={placeholder}
-          value={searchTerm}
-          onChange={(e) => onSearchChange(e.target.value)}
+          value={localSearch}
+          onChange={handleSearchChange}
           className="pl-9"
         />
       </div>

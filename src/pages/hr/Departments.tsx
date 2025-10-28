@@ -189,11 +189,45 @@ const Departments = () => {
           onOpenChange={setDetailOpen}
           title="Department Details"
           fields={[
-            { label: "Department Name", value: selectedDept.name },
-            { label: "Head of Department", value: selectedDept.head_of_department },
-            { label: "Description", value: selectedDept.description },
+            { label: "Department Name", value: selectedDept.name, type: "text", fieldName: "name" },
+            { label: "Head of Department", value: selectedDept.head_of_department, type: "text", fieldName: "head_of_department" },
+            { label: "Description", value: selectedDept.description, type: "textarea", fieldName: "description" },
             { label: "Created", value: selectedDept.created_at, type: "date" },
           ]}
+          onEdit={async (data) => {
+            try {
+              const { error } = await supabase
+                .from("departments")
+                .update({
+                  name: data.name,
+                  head_of_department: data.head_of_department || null,
+                  description: data.description || null,
+                })
+                .eq("id", selectedDept.id);
+
+              if (error) throw error;
+              toast.success("Department updated successfully!");
+              fetchDepartments();
+              setDetailOpen(false);
+            } catch (error: any) {
+              toast.error("Failed to update department");
+            }
+          }}
+          onDelete={async () => {
+            try {
+              const { error } = await supabase
+                .from("departments")
+                .delete()
+                .eq("id", selectedDept.id);
+
+              if (error) throw error;
+              toast.success("Department deleted successfully!");
+              setDetailOpen(false);
+              fetchDepartments();
+            } catch (error: any) {
+              toast.error("Failed to delete department");
+            }
+          }}
         />
       )}
     </div>

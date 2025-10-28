@@ -136,13 +136,38 @@ const Calls = () => {
         })
         .eq("id", selectedCall.id);
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error updating call:", error);
+        throw new Error("Failed to update call. Please try again.");
+      }
 
       toast.success("Call updated successfully!");
       fetchCalls();
       setDetailOpen(false);
     } catch (error: any) {
-      toast.error("Error updating call");
+      toast.error(error.message || "Error updating call");
+    }
+  };
+
+  const handleDetailDelete = async () => {
+    if (!selectedCall) return;
+
+    try {
+      const { error } = await supabase
+        .from("calls")
+        .delete()
+        .eq("id", selectedCall.id);
+
+      if (error) {
+        console.error("Error deleting call:", error);
+        throw new Error("Failed to delete call. Please try again.");
+      }
+
+      toast.success("Call deleted successfully!");
+      setDetailOpen(false);
+      fetchCalls();
+    } catch (error: any) {
+      toast.error(error.message || "Error deleting call");
     }
   };
 
@@ -352,6 +377,7 @@ const Calls = () => {
             { label: "Outcome", value: selectedCall.outcome, type: "textarea", fieldName: "outcome" },
           ]}
           onEdit={handleDetailEdit}
+          onDelete={handleDetailDelete}
         />
       )}
     </div>

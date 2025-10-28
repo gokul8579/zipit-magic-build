@@ -17,6 +17,7 @@ import Products from "./pages/Products";
 import Vendors from "./pages/Vendors";
 import PriceBooks from "./pages/PriceBooks";
 import SalesOrders from "./pages/SalesOrders";
+import PurchaseOrders from "./pages/PurchaseOrders";
 import Calls from "./pages/Calls";
 import Reports from "./pages/Reports";
 import CompanySettings from "./pages/CompanySettings";
@@ -52,6 +53,7 @@ const App = () => (
             <Route path="vendors" element={<Vendors />} />
             <Route path="price-books" element={<PriceBooks />} />
             <Route path="sales-orders" element={<SalesOrders />} />
+            <Route path="purchase-orders" element={<PurchaseOrders />} />
             <Route path="calls" element={<Calls />} />
             <Route path="reports" element={<Reports />} />
             <Route path="hr/employees" element={<Employees />} />
