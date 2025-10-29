@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Plus, Mail, Phone, MapPin, Briefcase } from "lucide-react";
 import { DetailViewDialog, DetailField } from "@/components/DetailViewDialog";
+import { SearchFilter } from "@/components/SearchFilter";
 
 interface Customer {
   id: string;
@@ -31,6 +32,7 @@ const Customers = () => {
   const [open, setOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -130,6 +132,12 @@ const Customers = () => {
     }
   };
 
+  const filteredCustomers = customers.filter(customer =>
+    customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    customer.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    customer.company?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   const handleDetailEdit = async (data: Record<string, any>) => {
     if (!selectedCustomer) return;
 
@@ -174,9 +182,28 @@ const Customers = () => {
     { label: "Created", value: selectedCustomer.created_at, type: "date" },
   ] : [];
 
+  const handleDetailDelete = async () => {
+    if (!selectedCustomer) return;
+
+    try {
+      const { error } = await supabase
+        .from("customers")
+        .delete()
+        .eq("id", selectedCustomer.id);
+
+      if (error) throw error;
+
+      toast.success("Customer deleted successfully!");
+      setDetailOpen(false);
+      fetchCustomers();
+    } catch (error: any) {
+      toast.error("Error deleting customer");
+    }
+  };
+
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold">Customers</h1>
           <p className="text-muted-foreground">Manage your customer database</p>
@@ -291,7 +318,9 @@ const Customers = () => {
         </Dialog>
       </div>
 
-      <div className="border rounded-lg">
+      <SearchFilter value={searchTerm} onChange={setSearchTerm} placeholder="Search customers..." />
+
+      <div className="border rounded-lg overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
@@ -315,7 +344,7 @@ const Customers = () => {
                 </TableCell>
               </TableRow>
             ) : (
-              customers.map((customer) => (
+              filteredCustomers.map((customer) => (
                 <TableRow 
                   key={customer.id}
                   className="cursor-pointer hover:bg-muted/50"
@@ -360,6 +389,7 @@ const Customers = () => {
         title="Customer Details"
         fields={detailFields}
         onEdit={handleDetailEdit}
+        onDelete={handleDetailDelete}
         actions={
           selectedCustomer && (
             <Button onClick={() => handleCreateDeal(selectedCustomer.id)}>

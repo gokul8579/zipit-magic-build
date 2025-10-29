@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Plus, Phone, Mail, Building, UserPlus } from "lucide-react";
 import { DetailViewDialog, DetailField } from "@/components/DetailViewDialog";
+import { SearchFilter } from "@/components/SearchFilter";
 
 interface Lead {
   id: string;
@@ -31,6 +32,13 @@ const Leads = () => {
   const [open, setOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const filteredLeads = leads.filter(lead =>
+    lead.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    lead.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    lead.company?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -351,7 +359,9 @@ const Leads = () => {
         </Dialog>
       </div>
 
-      <div className="border rounded-lg">
+      <SearchFilter value={searchTerm} onChange={setSearchTerm} placeholder="Search leads..." />
+
+      <div className="border rounded-lg overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
@@ -377,7 +387,7 @@ const Leads = () => {
                 </TableCell>
               </TableRow>
             ) : (
-              leads.map((lead) => (
+              filteredLeads.map((lead) => (
                 <TableRow 
                   key={lead.id}
                   className="cursor-pointer hover:bg-muted/50"

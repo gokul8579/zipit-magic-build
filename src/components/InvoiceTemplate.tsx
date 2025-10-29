@@ -14,6 +14,8 @@ interface InvoiceItem {
   quantity: number;
   unit_price: number;
   amount: number;
+  cgst_amount?: number;
+  sgst_amount?: number;
 }
 
 interface InvoiceData {
@@ -279,9 +281,12 @@ export const InvoiceTemplate = ({ open, onOpenChange, invoiceData, type = "invoi
               <thead>
                 <tr className="bg-muted">
                   <th className="border p-2 text-left">Description</th>
-                  <th className="border p-2 text-center w-24">Qty</th>
-                  <th className="border p-2 text-right w-32">Unit Price</th>
-                  <th className="border p-2 text-right w-32">Amount</th>
+                  <th className="border p-2 text-center w-20">Qty</th>
+                  <th className="border p-2 text-right w-28">Unit Price</th>
+                  <th className="border p-2 text-right w-24">Subtotal</th>
+                  <th className="border p-2 text-right w-24">CGST</th>
+                  <th className="border p-2 text-right w-24">SGST</th>
+                  <th className="border p-2 text-right w-28">Total</th>
                   {isEditing && <th className="border p-2 w-16"></th>}
                 </tr>
               </thead>
@@ -324,8 +329,17 @@ export const InvoiceTemplate = ({ open, onOpenChange, invoiceData, type = "invoi
                         `₹${item.unit_price.toLocaleString()}`
                       )}
                     </td>
-                    <td className="border p-2 text-right font-medium">
-                      ₹{item.amount.toLocaleString()}
+                    <td className="border p-2 text-right">
+                      ₹{(item.quantity * item.unit_price).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </td>
+                    <td className="border p-2 text-right">
+                      ₹{(item.cgst_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </td>
+                    <td className="border p-2 text-right">
+                      ₹{(item.sgst_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </td>
+                    <td className="border p-2 text-right font-bold text-primary">
+                      ₹{item.amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
                     {isEditing && (
                       <td className="border p-2 text-center">

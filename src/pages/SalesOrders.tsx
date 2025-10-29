@@ -11,7 +11,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-import { SalesOrderProductSelector } from "@/components/SalesOrderProductSelector";
+import { SalesOrderProductSelector2 } from "@/components/SalesOrderProductSelector2";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { SearchFilter } from "@/components/SearchFilter";
 
 interface SalesOrder {
   id: string;
@@ -46,8 +48,9 @@ const SalesOrders = () => {
     notes: "",
   });
   const [lineItems, setLineItems] = useState<any[]>([
-    { type: "new", product_id: "", description: "", quantity: 1, unit_price: 0 }
+    { type: "new", product_id: "", description: "", quantity: 1, unit_price: 0, cgst_percent: 9, sgst_percent: 9 }
   ]);
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
     fetchOrders();
@@ -101,6 +104,11 @@ const SalesOrders = () => {
     };
     return colors[status] || "bg-gray-100 text-gray-800";
   };
+
+  const filteredOrders = orders.filter(order =>
+    order.order_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    order.status.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const handleViewOrder = async (order: SalesOrder) => {
     try {
@@ -164,25 +172,40 @@ const SalesOrders = () => {
         </div>
       </div>
 
+      <SearchFilter value={searchTerm} onChange={setSearchTerm} placeholder="Search sales orders..." />
+
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-4xl max-h-[90vh]">
           <DialogHeader>
             <DialogTitle>Create New Sales Order</DialogTitle>
           </DialogHeader>
+          <ScrollArea className="max-h-[75vh] pr-4">
           <form onSubmit={async (e) => {
             e.preventDefault();
             try {
               const { data: { user } } = await supabase.auth.getUser();
               if (!user) return;
 
-              const subtotal = lineItems.reduce((s, i) => s + i.quantity * i.unit_price, 0);
-              const cgstPercent = parseFloat(formData.cgst_percent) || 0;
-              const sgstPercent = parseFloat(formData.sgst_percent) || 0;
-              const cgstAmount = (subtotal * cgstPercent) / 100;
-              const sgstAmount = (subtotal * sgstPercent) / 100;
-              const taxAmount = cgstAmount + sgstAmount;
+              // Calculate totals from items with per-product tax
+              let subtotal = 0;
+              let totalCgst = 0;
+              let totalSgst = 0;
+              
+              lineItems.forEach(item => {
+                const itemSubtotal = item.quantity * item.unit_price;
+                const itemCgst = (itemSubtotal * (item.cgst_percent || 0)) / 100;
+                const itemSgst = (itemSubtotal * (item.sgst_percent || 0)) / 100;
+                subtotal += itemSubtotal;
+                totalCgst += itemCgst;
+                totalSgst += itemSgst;
+              });
+
+              const taxAmount = totalCgst + totalSgst;
               const discount = parseFloat(formData.discount_amount) || 0;
               const total = subtotal + taxAmount - discount;
+
+              const avgCgstPercent = subtotal > 0 ? (totalCgst / subtotal) * 100 : 0;
+              const avgSgstPercent = subtotal > 0 ? (totalSgst / subtotal) * 100 : 0;
 
               const { data: order, error } = await supabase.from("sales_orders").insert({
                 order_number: formData.order_number,
@@ -190,8 +213,8 @@ const SalesOrders = () => {
                 status: formData.status as any,
                 order_date: formData.order_date,
                 expected_delivery_date: formData.delivery_date || null,
-                cgst_percent: cgstPercent,
-                sgst_percent: sgstPercent,
+                cgst_percent: avgCgstPercent,
+                sgst_percent: avgSgstPercent,
                 subtotal: subtotal,
                 tax_amount: taxAmount,
                 discount_amount: discount,
@@ -213,9 +236,9 @@ const SalesOrders = () => {
 
               if (order && lineItems.length > 0) {
                 const items = lineItems.map(item => {
-                  const itemTotal = item.quantity * item.unit_price;
-                  const itemCgst = (itemTotal * cgstPercent) / 100;
-                  const itemSgst = (itemTotal * sgstPercent) / 100;
+                  const itemSubtotal = item.quantity * item.unit_price;
+                  const itemCgst = (itemSubtotal * (item.cgst_percent || 0)) / 100;
+                  const itemSgst = (itemSubtotal * (item.sgst_percent || 0)) / 100;
                   return {
                     sales_order_id: order.id,
                     product_id: item.product_id || null,
@@ -224,7 +247,7 @@ const SalesOrders = () => {
                     unit_price: item.unit_price,
                     cgst_amount: itemCgst,
                     sgst_amount: itemSgst,
-                    amount: itemTotal + itemCgst + itemSgst,
+                    amount: itemSubtotal + itemCgst + itemSgst,
                   };
                 });
                 
@@ -246,7 +269,7 @@ const SalesOrders = () => {
                 discount_amount: "0",
                 notes: "",
               });
-              setLineItems([{ type: "new", product_id: "", description: "", quantity: 1, unit_price: 0 }]);
+              setLineItems([{ type: "new", product_id: "", description: "", quantity: 1, unit_price: 0, cgst_percent: 9, sgst_percent: 9 }]);
               fetchOrders();
             } catch (err: any) {
               console.error("Error creating sales order:", err);
@@ -294,16 +317,12 @@ const SalesOrders = () => {
                 <Input id="delivery_date" type="date" value={formData.delivery_date} onChange={(e) => setFormData({ ...formData, delivery_date: e.target.value })} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="tax_amount">Tax Amount (₹)</Label>
-                <Input id="tax_amount" type="number" step="0.01" value={formData.tax_amount} onChange={(e) => setFormData({ ...formData, tax_amount: e.target.value })} />
-              </div>
-              <div className="space-y-2">
                 <Label htmlFor="discount_amount">Discount Amount (₹)</Label>
                 <Input id="discount_amount" type="number" step="0.01" value={formData.discount_amount} onChange={(e) => setFormData({ ...formData, discount_amount: e.target.value })} />
               </div>
             </div>
 
-            <SalesOrderProductSelector items={lineItems} onChange={setLineItems} />
+            <SalesOrderProductSelector2 items={lineItems} onChange={setLineItems} />
 
             <div className="space-y-2">
               <Label htmlFor="notes">Notes</Label>
@@ -315,10 +334,11 @@ const SalesOrders = () => {
               <Button type="submit">Create Order</Button>
             </div>
           </form>
+          </ScrollArea>
         </DialogContent>
       </Dialog>
 
-      <div className="border rounded-lg">
+      <div className="border rounded-lg overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
@@ -348,7 +368,7 @@ const SalesOrders = () => {
                 </TableCell>
               </TableRow>
             ) : (
-              orders.map((order) => (
+              filteredOrders.map((order) => (
                 <TableRow key={order.id}>
                   <TableCell className="font-medium">{order.order_number}</TableCell>
                   <TableCell>

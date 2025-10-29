@@ -8,6 +8,7 @@ import { RecentActivity } from "@/components/dashboard/RecentActivity";
 import { QuickActions } from "@/components/dashboard/QuickActions";
 import { PendingTasks } from "@/components/dashboard/PendingTasks";
 import { AdvancedAnalytics } from "@/components/dashboard/AdvancedAnalytics";
+import { InventoryApproval } from "@/components/dashboard/InventoryApproval";
 
 interface DashboardStats {
   totalLeads: number;
@@ -332,6 +333,8 @@ const Dashboard = () => {
           </CardContent>
         </Card>
       </div>
+
+      <InventoryApproval />
 
       <div className="grid gap-6 md:grid-cols-1">
         <Card>

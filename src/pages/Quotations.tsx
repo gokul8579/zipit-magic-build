@@ -456,7 +456,7 @@ const Quotations = () => {
                             <SelectValue placeholder="Choose from products" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="">Manual Entry</SelectItem>
+                            <SelectItem value="manual">Manual Entry</SelectItem>
                             {products.map((product) => (
                               <SelectItem key={product.id} value={product.id}>
                                 {product.name} - ₹{Number(product.unit_price).toLocaleString()}
