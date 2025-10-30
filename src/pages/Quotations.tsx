@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
@@ -330,10 +331,11 @@ const Quotations = () => {
               Create Quotation
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-2xl max-h-[90vh]">
             <DialogHeader>
               <DialogTitle>Create New Quotation</DialogTitle>
             </DialogHeader>
+            <ScrollArea className="max-h-[calc(90vh-8rem)] pr-4">
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="quotation_number">Quotation Number *</Label>
@@ -555,6 +557,7 @@ const Quotations = () => {
                 <Button type="submit">Create Quotation</Button>
               </div>
             </form>
+            </ScrollArea>
           </DialogContent>
         </Dialog>
       </div>

@@ -23,6 +23,7 @@ const CompanySettings = () => {
     website: "",
     tax_id: "",
     quotation_template: "t1",
+    brand_color: "#F9423A",
   });
 
   useEffect(() => {
@@ -55,6 +56,7 @@ const CompanySettings = () => {
           website: data.website || "",
           tax_id: data.tax_id || "",
           quotation_template: (data as any).quotation_template || "t1",
+          brand_color: (data as any).brand_color || "#F9423A",
         });
       }
     } catch (error: any) {
@@ -220,6 +222,27 @@ const CompanySettings = () => {
                   <SelectItem value="t5">Creative Vibrant</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="brand_color">Brand Color (for invoices)</Label>
+              <div className="flex gap-2 items-center">
+                <Input
+                  id="brand_color"
+                  type="color"
+                  value={formData.brand_color}
+                  onChange={(e) => setFormData({ ...formData, brand_color: e.target.value })}
+                  className="w-20 h-10"
+                />
+                <Input
+                  type="text"
+                  value={formData.brand_color}
+                  onChange={(e) => setFormData({ ...formData, brand_color: e.target.value })}
+                  placeholder="#F9423A"
+                  className="flex-1"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">Used for company name color in documents</p>
             </div>
 
             <div className="flex justify-end">

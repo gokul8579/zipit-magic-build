@@ -43,40 +43,52 @@ export const PriceBookProductsDialog = ({
     try {
       setLoading(true);
       
-      // Get price book items
+      if (!priceBookId) {
+        setProducts([]);
+        return;
+      }
+
+      // Get price book items with product details in one query
       const { data: priceBookItems, error: itemsError } = await supabase
         .from("price_book_items")
-        .select("id, list_price, product_id")
-        .eq("price_book_id", priceBookId!);
+        .select(`
+          id,
+          list_price,
+          product_id,
+          products (
+            id,
+            name,
+            quantity_in_stock
+          )
+        `)
+        .eq("price_book_id", priceBookId);
 
-      if (itemsError) throw itemsError;
+      if (itemsError) {
+        console.error("Price book items error:", itemsError);
+        throw itemsError;
+      }
 
       if (!priceBookItems || priceBookItems.length === 0) {
         setProducts([]);
         return;
       }
 
-      // Get product details
-      const productIds = priceBookItems.map(item => item.product_id);
-      const { data: productsData, error: productsError } = await supabase
-        .from("products")
-        .select("id, name, quantity_in_stock")
-        .in("id", productIds);
-
-      if (productsError) throw productsError;
-
-      // Combine data
-      const combinedData = productsData?.map(product => {
-        const priceBookItem = priceBookItems.find(item => item.product_id === product.id);
-        return {
-          ...product,
-          stock_quantity: product.quantity_in_stock,
-          unit_price: priceBookItem?.list_price || 0,
-        };
-      }) || [];
+      // Map the data
+      const combinedData = priceBookItems
+        .filter(item => item.products) // Filter out any items without products
+        .map(item => {
+          const product = item.products as any;
+          return {
+            id: product.id,
+            name: product.name,
+            stock_quantity: product.quantity_in_stock || 0,
+            unit_price: item.list_price || 0,
+          };
+        });
 
       setProducts(combinedData);
     } catch (error) {
+      console.error("Error fetching price book products:", error);
       toast.error("Error fetching products");
     } finally {
       setLoading(false);

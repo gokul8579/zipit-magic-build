@@ -39,8 +39,12 @@ interface CompanySettings {
   email?: string;
   phone?: string;
   address?: string;
+  city?: string;
+  state?: string;
+  postal_code?: string;
   logo_url?: string;
   tax_id?: string;
+  brand_color?: string;
 }
 
 interface InvoiceTemplateProps {
@@ -187,18 +191,31 @@ export const InvoiceTemplate = ({ open, onOpenChange, invoiceData, type = "invoi
               {companySettings?.logo_url && (
                 <img src={companySettings.logo_url} alt="Company Logo" className="h-16 mb-2" />
               )}
-              <h2 className="text-2xl font-bold text-primary">
+              <h2 
+                className="text-2xl font-bold" 
+                style={{ color: companySettings?.brand_color || '#F9423A' }}
+              >
                 {companySettings?.company_name || "Your Company Name"}
               </h2>
               <div className="text-sm text-muted-foreground mt-2 space-y-1">
                 {companySettings?.address && <p>{companySettings.address}</p>}
-                {companySettings?.email && <p>Email: {companySettings.email}</p>}
-                {companySettings?.phone && <p>Phone: {companySettings.phone}</p>}
+                {(companySettings?.city || companySettings?.state || companySettings?.postal_code) && (
+                  <p>
+                    {[companySettings?.city, companySettings?.state, companySettings?.postal_code]
+                      .filter(Boolean)
+                      .join(', ')}
+                  </p>
+                )}
+                {companySettings?.email && <p><span className="font-bold">Email:</span> {companySettings.email}</p>}
+                {companySettings?.phone && <p><span className="font-bold">Phone:</span> {companySettings.phone}</p>}
                 {companySettings?.tax_id && <p>Tax ID: {companySettings.tax_id}</p>}
               </div>
             </div>
             <div className="text-right">
-              <h1 className="text-3xl font-bold text-primary uppercase">
+              <h1 
+                className="text-3xl font-bold uppercase" 
+                style={{ color: companySettings?.brand_color || '#F9423A' }}
+              >
                 {type === "invoice" ? "INVOICE" : "QUOTATION"}
               </h1>
               <div className="mt-4 space-y-1 text-sm">

@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -139,6 +140,25 @@ const Vendors = () => {
     }
   };
 
+  const handleDetailDelete = async () => {
+    if (!selectedVendor) return;
+
+    try {
+      const { error } = await supabase
+        .from("vendors")
+        .delete()
+        .eq("id", selectedVendor.id);
+
+      if (error) throw error;
+
+      toast.success("Vendor deleted successfully!");
+      setDetailOpen(false);
+      fetchVendors();
+    } catch (error: any) {
+      toast.error("Error deleting vendor");
+    }
+  };
+
   const filteredVendors = vendors.filter(vendor => {
     const searchLower = searchTerm.toLowerCase();
     switch (filterField) {
@@ -183,10 +203,11 @@ const Vendors = () => {
               Add Vendor
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-2xl max-h-[90vh]">
             <DialogHeader>
               <DialogTitle>Add New Vendor</DialogTitle>
             </DialogHeader>
+            <ScrollArea className="max-h-[calc(90vh-8rem)] pr-4">
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -283,6 +304,7 @@ const Vendors = () => {
                 <Button type="submit">Create Vendor</Button>
               </div>
             </form>
+            </ScrollArea>
           </DialogContent>
         </Dialog>
       </div>
@@ -352,13 +374,14 @@ const Vendors = () => {
         </Table>
       </div>
 
-      <DetailViewDialog
-        open={detailOpen}
-        onOpenChange={setDetailOpen}
-        title="Vendor Details"
-        fields={detailFields}
-        onEdit={handleDetailEdit}
-      />
+        <DetailViewDialog
+          open={detailOpen}
+          onOpenChange={setDetailOpen}
+          title="Vendor Details"
+          fields={detailFields}
+          onEdit={handleDetailEdit}
+          onDelete={handleDetailDelete}
+        />
     </div>
   );
 };

@@ -142,6 +142,7 @@ export type Database = {
       company_settings: {
         Row: {
           address: string | null
+          brand_color: string | null
           city: string | null
           company_name: string
           country: string | null
@@ -160,6 +161,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          brand_color?: string | null
           city?: string | null
           company_name: string
           country?: string | null
@@ -178,6 +180,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          brand_color?: string | null
           city?: string | null
           company_name?: string
           country?: string | null

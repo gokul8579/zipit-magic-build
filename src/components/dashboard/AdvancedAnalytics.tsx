@@ -17,8 +17,8 @@ interface AdvancedAnalyticsProps {
 
 const STAGE_COLORS: Record<string, string> = {
   "ENQUIRY": "#3b82f6", // blue
-  "PROPOSAL": "#eab308", // yellow
-  "NEGOTIATION": "#f97316", // orange
+  "PROPOSAL": "#10b981", // green
+  "NEGOTIATION": "#f59e0b", // amber
 };
 
 const COLORS = [

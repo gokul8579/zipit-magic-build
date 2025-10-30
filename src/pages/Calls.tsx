@@ -67,11 +67,14 @@ const Calls = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      // Convert local datetime to ISO format for proper storage
+      const scheduledAtISO = formData.scheduled_at ? new Date(formData.scheduled_at).toISOString() : null;
+
       const { error } = await supabase.from("calls").insert([{
         title: formData.title,
         call_type: formData.call_type as any,
         status: formData.status as any,
-        scheduled_at: formData.scheduled_at || null,
+        scheduled_at: scheduledAtISO,
         notes: formData.notes || null,
         user_id: user.id,
       }] as any);
@@ -89,6 +92,7 @@ const Calls = () => {
       });
       fetchCalls();
     } catch (error: any) {
+      console.error("Error logging call:", error);
       toast.error("Error logging call");
     }
   };

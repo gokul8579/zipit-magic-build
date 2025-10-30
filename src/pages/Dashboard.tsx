@@ -137,8 +137,9 @@ const Dashboard = () => {
         dealStageCounts[deal.stage] = (dealStageCounts[deal.stage] || 0) + 1;
       });
 
+      // Cap conversion rate at 100%
       const conversionRate = leads.count && customers.count 
-        ? (customers.count / leads.count) * 100 
+        ? Math.min((customers.count / leads.count) * 100, 100)
         : 0;
 
       const avgDealValue = wonDeals.length > 0 
