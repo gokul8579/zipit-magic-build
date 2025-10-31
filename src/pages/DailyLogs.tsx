@@ -39,6 +39,7 @@ const DailyLogs = () => {
   const [filteredLogs, setFilteredLogs] = useState<DailyLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
+  const [viewMode, setViewMode] = useState(true);
   const [editingLog, setEditingLog] = useState<DailyLog | null>(null);
   const [previousDayLog, setPreviousDayLog] = useState<DailyLog | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -176,8 +177,9 @@ const DailyLogs = () => {
     setPreviousDayLog(null);
   };
 
-  const handleEdit = (log: DailyLog) => {
+  const handleViewLog = (log: DailyLog) => {
     setEditingLog(log);
+    setViewMode(true);
     fetchPreviousDayLog(log.log_date);
     setFormData({
       log_date: log.log_date,
@@ -191,7 +193,42 @@ const DailyLogs = () => {
       bank_balance: log.bank_balance.toString(),
       notes: log.notes || "",
     });
+    
+    // Parse expense items from notes
+    const expenseMatch = log.notes?.match(/Expenses: (.+)/);
+    if (expenseMatch) {
+      const expenseStr = expenseMatch[1];
+      const items = expenseStr.split("; ").map(item => {
+        const [description, amount] = item.split(": ₹");
+        return { description, amount: amount || "" };
+      }).filter(item => item.description);
+      if (items.length > 0) {
+        setExpenseItems(items);
+      }
+    }
     setOpen(true);
+  };
+
+  const handleEdit = () => {
+    setViewMode(false);
+  };
+
+  const handleDelete = async () => {
+    if (!editingLog) return;
+    try {
+      const { error } = await supabase
+        .from("daily_logs")
+        .delete()
+        .eq("id", editingLog.id);
+
+      if (error) throw error;
+      toast.success("Daily log deleted successfully");
+      setOpen(false);
+      setEditingLog(null);
+      fetchLogs();
+    } catch (error) {
+      toast.error("Error deleting log");
+    }
   };
 
   const fetchPreviousDayLog = async (currentDate: string) => {
@@ -222,6 +259,7 @@ const DailyLogs = () => {
 
   const handleOpenDialog = () => {
     setEditingLog(null);
+    setViewMode(false);
     const today = new Date().toISOString().split('T')[0];
     fetchPreviousDayLog(today);
     resetForm();
@@ -275,12 +313,15 @@ const DailyLogs = () => {
         />
       </div>
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={(val) => { setOpen(val); if (!val) setViewMode(true); }}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editingLog ? "Edit" : "Add"} Daily Log</DialogTitle>
+            <DialogTitle>
+              {viewMode ? "View" : (editingLog ? "Edit" : "Add")} Daily Log
+            </DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
+            <fieldset disabled={viewMode}>
             <div className="space-y-2">
               <Label htmlFor="log_date">Date *</Label>
               <Input
@@ -459,11 +500,29 @@ const DailyLogs = () => {
               />
             </div>
             <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-                Cancel
-              </Button>
-              <Button type="submit">{editingLog ? "Update" : "Add"} Log</Button>
+              {viewMode && editingLog && (
+                <>
+                  <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+                    Close
+                  </Button>
+                  <Button type="button" variant="destructive" onClick={handleDelete}>
+                    Delete
+                  </Button>
+                  <Button type="button" onClick={handleEdit}>
+                    Edit
+                  </Button>
+                </>
+              )}
+              {!viewMode && (
+                <>
+                  <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit">{editingLog ? "Update" : "Add"} Log</Button>
+                </>
+              )}
             </div>
+            </fieldset>
           </form>
         </DialogContent>
       </Dialog>
@@ -496,15 +555,15 @@ const DailyLogs = () => {
               </TableRow>
             ) : (
               filteredLogs.map((log) => (
-                <TableRow key={log.id} className="cursor-pointer" onClick={() => handleEdit(log)}>
+                <TableRow key={log.id} className="cursor-pointer" onClick={() => handleViewLog(log)}>
                   <TableCell className="font-medium">{new Date(log.log_date).toLocaleDateString()}</TableCell>
                   <TableCell>{formatIndianCurrency(log.sales_amount)}</TableCell>
                   <TableCell>{formatIndianCurrency(log.expense_amount)}</TableCell>
                   <TableCell>{formatIndianCurrency(log.income_amount)}</TableCell>
                   <TableCell>{formatIndianCurrency(log.cash_in_hand)}</TableCell>
-                  <TableCell>
-                    <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleEdit(log); }}>
-                      Edit
+                  <TableCell onClick={(e) => e.stopPropagation()}>
+                    <Button variant="ghost" size="sm" onClick={() => handleViewLog(log)}>
+                      View
                     </Button>
                   </TableCell>
                 </TableRow>

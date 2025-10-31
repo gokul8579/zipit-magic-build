@@ -30,6 +30,7 @@ import DailyLogs from "./pages/DailyLogs";
 import Analytics from "./pages/Analytics";
 import Papers from "./pages/Papers";
 import NotFound from "./pages/NotFound";
+import { InventoryStockApproval } from "./components/InventoryStockApproval";
 
 const queryClient = new QueryClient();
 
@@ -40,10 +41,11 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Index />} />
+          <Route path="/" element={<Auth />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/dashboard" element={<DashboardLayout />}>
             <Route index element={<Dashboard />} />
+            <Route path="inventory-approval" element={<div className="p-6"><InventoryStockApproval /></div>} />
             <Route path="leads" element={<Leads />} />
             <Route path="customers" element={<Customers />} />
             <Route path="pipeline" element={<Pipeline />} />

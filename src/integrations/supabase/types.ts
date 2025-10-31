@@ -143,8 +143,10 @@ export type Database = {
         Row: {
           address: string | null
           brand_color: string | null
+          cin_number: string | null
           city: string | null
           company_name: string
+          company_type: string | null
           country: string | null
           created_at: string | null
           email: string | null
@@ -162,8 +164,10 @@ export type Database = {
         Insert: {
           address?: string | null
           brand_color?: string | null
+          cin_number?: string | null
           city?: string | null
           company_name: string
+          company_type?: string | null
           country?: string | null
           created_at?: string | null
           email?: string | null
@@ -181,8 +185,10 @@ export type Database = {
         Update: {
           address?: string | null
           brand_color?: string | null
+          cin_number?: string | null
           city?: string | null
           company_name?: string
+          company_type?: string | null
           country?: string | null
           created_at?: string | null
           email?: string | null
@@ -1056,6 +1062,7 @@ export type Database = {
           notes: string | null
           order_date: string
           order_number: string
+          payment_status: string | null
           quotation_id: string | null
           sgst_percent: number | null
           status: Database["public"]["Enums"]["order_status"]
@@ -1076,6 +1083,7 @@ export type Database = {
           notes?: string | null
           order_date?: string
           order_number: string
+          payment_status?: string | null
           quotation_id?: string | null
           sgst_percent?: number | null
           status?: Database["public"]["Enums"]["order_status"]
@@ -1096,6 +1104,7 @@ export type Database = {
           notes?: string | null
           order_date?: string
           order_number?: string
+          payment_status?: string | null
           quotation_id?: string | null
           sgst_percent?: number | null
           status?: Database["public"]["Enums"]["order_status"]

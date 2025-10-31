@@ -209,6 +209,7 @@ export const InvoiceTemplate = ({ open, onOpenChange, invoiceData, type = "invoi
                 {companySettings?.email && <p><span className="font-bold">Email:</span> {companySettings.email}</p>}
                 {companySettings?.phone && <p><span className="font-bold">Phone:</span> {companySettings.phone}</p>}
                 {companySettings?.tax_id && <p>Tax ID: {companySettings.tax_id}</p>}
+                {(companySettings as any)?.cin_number && <p>CIN: {(companySettings as any).cin_number}</p>}
               </div>
             </div>
             <div className="text-right">

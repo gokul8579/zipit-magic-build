@@ -24,6 +24,8 @@ const CompanySettings = () => {
     tax_id: "",
     quotation_template: "t1",
     brand_color: "#F9423A",
+    company_type: "",
+    cin_number: "",
   });
 
   useEffect(() => {
@@ -57,6 +59,8 @@ const CompanySettings = () => {
           tax_id: data.tax_id || "",
           quotation_template: (data as any).quotation_template || "t1",
           brand_color: (data as any).brand_color || "#F9423A",
+          company_type: (data as any).company_type || "",
+          cin_number: (data as any).cin_number || "",
         });
       }
     } catch (error: any) {
@@ -223,6 +227,38 @@ const CompanySettings = () => {
                 </SelectContent>
               </Select>
             </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="company_type">Company Type</Label>
+              <Select 
+                value={formData.company_type} 
+                onValueChange={(value) => setFormData({ ...formData, company_type: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select company type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="sole_proprietorship">Sole Proprietorship</SelectItem>
+                  <SelectItem value="partnership">Partnership</SelectItem>
+                  <SelectItem value="private_limited">Private Limited</SelectItem>
+                  <SelectItem value="public_limited">Public Limited</SelectItem>
+                  <SelectItem value="llp">Limited Liability Partnership (LLP)</SelectItem>
+                  <SelectItem value="one_person_company">One Person Company (OPC)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {formData.company_type === "private_limited" && (
+              <div className="space-y-2">
+                <Label htmlFor="cin_number">CIN Number</Label>
+                <Input
+                  id="cin_number"
+                  value={formData.cin_number}
+                  onChange={(e) => setFormData({ ...formData, cin_number: e.target.value })}
+                  placeholder="Enter CIN Number"
+                />
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="brand_color">Brand Color (for invoices)</Label>
