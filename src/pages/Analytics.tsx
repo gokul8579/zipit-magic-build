@@ -202,7 +202,7 @@ const Analytics = () => {
                   const value = date.toISOString().slice(0, 7);
                   const label = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
                   return (
-                    <SelectItem key={`month-${i}-${value}`} value={value}>
+                    <SelectItem key={value} value={value}>
                       {label}
                     </SelectItem>
                   );

@@ -26,6 +26,7 @@ interface SalesOrder {
   tax_amount: number;
   discount_amount: number;
   notes: string | null;
+  payment_status?: string;
 }
 
 const SalesOrders = () => {
@@ -39,6 +40,7 @@ const SalesOrders = () => {
     order_number: `SO-${Date.now()}`,
     customer_id: "",
     status: "draft",
+    payment_status: "pending",
     order_date: new Date().toISOString().slice(0,10),
     delivery_date: "",
     cgst_percent: "9",
@@ -211,6 +213,7 @@ const SalesOrders = () => {
                 order_number: formData.order_number,
                 customer_id: formData.customer_id || null,
                 status: formData.status as any,
+                payment_status: formData.payment_status as any,
                 order_date: formData.order_date,
                 expected_delivery_date: formData.delivery_date || null,
                 cgst_percent: avgCgstPercent,
@@ -261,6 +264,7 @@ const SalesOrders = () => {
                 order_number: `SO-${Date.now()}`,
                 customer_id: "",
                 status: "draft",
+                payment_status: "pending",
                 order_date: new Date().toISOString().slice(0,10),
                 delivery_date: "",
                 cgst_percent: "9",
@@ -305,6 +309,20 @@ const SalesOrders = () => {
                     <SelectItem value="shipped">Shipped</SelectItem>
                     <SelectItem value="delivered">Delivered</SelectItem>
                     <SelectItem value="cancelled">Cancelled</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="payment_status">Payment Status</Label>
+                <Select value={formData.payment_status} onValueChange={(v) => setFormData({ ...formData, payment_status: v })}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="paid">Paid</SelectItem>
+                    <SelectItem value="partially_paid">Partially Paid</SelectItem>
+                    <SelectItem value="overdue">Overdue</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
