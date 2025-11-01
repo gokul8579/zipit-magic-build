@@ -29,6 +29,7 @@ const Tasks = () => {
   const [open, setOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [dueDateFilter, setDueDateFilter] = useState("");
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -203,6 +204,13 @@ const Tasks = () => {
     { label: "Due Date", value: selectedTask.due_date || "", type: "datetime", fieldName: "due_date" },
   ] : [];
 
+  const filteredTasks = tasks.filter(task => {
+    if (!dueDateFilter) return true;
+    if (!task.due_date) return false;
+    const taskDate = new Date(task.due_date).toISOString().split('T')[0];
+    return taskDate === dueDateFilter;
+  });
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -210,7 +218,15 @@ const Tasks = () => {
           <h1 className="text-3xl font-bold">Tasks & Follow-ups</h1>
           <p className="text-muted-foreground">Manage your to-do list and follow-ups</p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
+        <div className="flex gap-2 items-center">
+          <Input 
+            type="date" 
+            value={dueDateFilter} 
+            onChange={(e) => setDueDateFilter(e.target.value)}
+            placeholder="Filter by due date"
+            className="w-48"
+          />
+          <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="h-4 w-4 mr-2" />
@@ -287,6 +303,7 @@ const Tasks = () => {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       <div className="border rounded-lg">
@@ -314,7 +331,7 @@ const Tasks = () => {
                 </TableCell>
               </TableRow>
             ) : (
-              tasks.map((task) => (
+              filteredTasks.map((task) => (
                 <TableRow 
                   key={task.id} 
                   className={`cursor-pointer hover:bg-muted/50 ${task.status === "completed" ? "opacity-50" : ""}`}

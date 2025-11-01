@@ -31,7 +31,7 @@ const Calls = () => {
   const [detailOpen, setDetailOpen] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
-    call_type: "call",
+        call_type: "outbound",
     status: "scheduled",
     scheduled_at: "",
     notes: "",
@@ -85,7 +85,7 @@ const Calls = () => {
       setOpen(false);
       setFormData({
         title: "",
-        call_type: "call",
+        call_type: "outbound",
         status: "scheduled",
         scheduled_at: "",
         notes: "",

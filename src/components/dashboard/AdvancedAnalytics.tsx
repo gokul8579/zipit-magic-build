@@ -15,6 +15,14 @@ interface AdvancedAnalyticsProps {
   data: AnalyticsData;
 }
 
+const SOURCE_COLORS: Record<string, string> = {
+  "website": "#3b82f6", // blue
+  "referral": "#10b981", // green
+  "social": "#f59e0b", // amber
+  "email": "#8b5cf6", // purple
+  "other": "#ec4899", // pink
+};
+
 const STAGE_COLORS: Record<string, string> = {
   "ENQUIRY": "#3b82f6", // blue
   "PROPOSAL": "#10b981", // green
@@ -170,7 +178,14 @@ export const AdvancedAnalytics = ({ data }: AdvancedAnalyticsProps) => {
                     borderRadius: "var(--radius)"
                   }}
                 />
-                <Bar dataKey="value" fill="hsl(var(--primary))" radius={[8, 8, 0, 0]} />
+                <Bar dataKey="value" radius={[8, 8, 0, 0]}>
+                  {data.leadsBySource.map((entry, index) => (
+                    <Cell 
+                      key={`cell-${index}`} 
+                      fill={SOURCE_COLORS[entry.name.toLowerCase()] || COLORS[index % COLORS.length]} 
+                    />
+                  ))}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           </CardContent>

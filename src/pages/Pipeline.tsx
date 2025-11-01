@@ -367,12 +367,12 @@ const Pipeline = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="lead_id">Related Lead (Optional)</Label>
-                  <Select value={formData.lead_id} onValueChange={(value) => setFormData({ ...formData, lead_id: value })}>
+                  <Select value={formData.lead_id || "none"} onValueChange={(value) => setFormData({ ...formData, lead_id: value === "none" ? "" : value })}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select a lead" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">None</SelectItem>
+                      <SelectItem value="none">None</SelectItem>
                       {leads.map((lead) => (
                         <SelectItem key={lead.id} value={lead.id}>
                           {lead.name}
@@ -383,12 +383,12 @@ const Pipeline = () => {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="customer_id">Related Customer (Optional)</Label>
-                  <Select value={formData.customer_id} onValueChange={(value) => setFormData({ ...formData, customer_id: value })}>
+                  <Select value={formData.customer_id || "none"} onValueChange={(value) => setFormData({ ...formData, customer_id: value === "none" ? "" : value })}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select a customer" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">None</SelectItem>
+                      <SelectItem value="none">None</SelectItem>
                       {customers.map((customer) => (
                         <SelectItem key={customer.id} value={customer.id}>
                           {customer.name}
