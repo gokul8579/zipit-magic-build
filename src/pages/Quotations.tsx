@@ -15,6 +15,7 @@ import { InvoiceTemplate } from "@/components/InvoiceTemplate";
 import { DetailViewDialog, DetailField } from "@/components/DetailViewDialog";
 import { formatLocalDate, formatLocalDateTime } from "@/lib/dateUtils";
 import { QuotationProductSelector } from "@/components/QuotationProductSelector";
+import { SearchFilter } from "@/components/SearchFilter";
 
 interface Quotation {
   id: string;
@@ -27,6 +28,8 @@ interface Quotation {
   tax_amount: number;
   discount_amount: number;
   notes: string | null;
+  cgst_percent: number;
+  sgst_percent: number;
 }
 
 const Quotations = () => {
@@ -53,6 +56,7 @@ const Quotations = () => {
   const [lineItems, setLineItems] = useState([
     { type: "new", product_id: "", description: "", quantity: 1, unit_price: 0, cgst_percent: 9, sgst_percent: 9 }
   ]);
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
     fetchQuotations();
@@ -263,16 +267,22 @@ const Quotations = () => {
 
       const invoiceData = {
         invoice_number: quotation.quotation_number,
+        quotation_id: quotation.id,
         date: quotation.created_at,
         due_date: quotation.valid_until,
         customer_name: customerData?.name || "Customer Name",
         customer_email: customerData?.email,
         customer_phone: customerData?.phone,
         customer_address: customerData?.address,
+        customer_city: customerData?.city,
+        customer_state: customerData?.state,
+        customer_postal_code: customerData?.postal_code,
         items: items?.map(item => ({
           description: item.description,
           quantity: Number(item.quantity),
           unit_price: Number(item.unit_price),
+          cgst_amount: Number(item.cgst_amount || 0),
+          sgst_amount: Number(item.sgst_amount || 0),
           amount: Number(item.amount),
         })) || [],
         subtotal: Number(quotation.total_amount) - Number(quotation.tax_amount) + Number(quotation.discount_amount),
@@ -280,11 +290,13 @@ const Quotations = () => {
         discount_amount: Number(quotation.discount_amount),
         total_amount: Number(quotation.total_amount),
         notes: quotation.notes,
+        cgst_percent: Number(quotation.cgst_percent || 0),
+        sgst_percent: Number(quotation.sgst_percent || 0),
       };
 
       setInvoiceDialogOpen(true);
-      // Store invoice data separately
       (window as any).__invoiceData = invoiceData;
+      (window as any).__onQuotationUpdate = fetchQuotations;
     } catch (error) {
       toast.error("Error loading quotation details");
     }
@@ -336,6 +348,11 @@ const Quotations = () => {
     { label: "Notes", value: selectedQuotation.notes || "", type: "textarea", fieldName: "notes" },
     { label: "Created", value: selectedQuotation.created_at, type: "date" },
   ] : [];
+
+  const filteredQuotations = quotations.filter(q =>
+    q.quotation_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    q.status.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div className="space-y-6">
@@ -455,6 +472,8 @@ const Quotations = () => {
         </Dialog>
       </div>
 
+      <SearchFilter value={searchTerm} onChange={setSearchTerm} placeholder="Search quotations..." />
+
       <div className="border rounded-lg">
         <Table>
           <TableHeader>
@@ -485,7 +504,7 @@ const Quotations = () => {
                 </TableCell>
               </TableRow>
             ) : (
-              quotations.map((quotation) => (
+              filteredQuotations.map((quotation) => (
                 <TableRow 
                   key={quotation.id}
                   className="cursor-pointer hover:bg-muted/50"

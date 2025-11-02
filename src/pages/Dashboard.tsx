@@ -94,14 +94,14 @@ const Dashboard = () => {
       const wonDeals = deals.data?.filter((d) => d.stage === "closed_won") || [];
       const totalRevenue = wonDeals.reduce((sum, deal) => sum + (Number(deal.value) || 0), 0);
 
-      // Fetch real sales orders for revenue trend
-      const { data: salesOrders } = await supabase
-        .from("sales_orders")
-        .select("total_amount, created_at")
+      // Fetch real won deals (from deals table, not sales orders)
+      const { data: wonDealsData } = await supabase
+        .from("deals")
+        .select("value, updated_at")
         .eq("user_id", user.id)
-        .neq("status", "cancelled");
+        .eq("stage", "closed_won");
 
-      // Group sales by month
+      // Group won deals by month
       const monthlyRevenueMap: Record<string, { revenue: number; deals: number }> = {};
       const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
       const currentYear = new Date().getFullYear();
@@ -114,12 +114,12 @@ const Dashboard = () => {
         monthlyRevenueMap[monthKey] = { revenue: 0, deals: 0 };
       }
 
-      salesOrders?.forEach(order => {
-        const date = new Date(order.created_at);
+      wonDealsData?.forEach(deal => {
+        const date = new Date(deal.updated_at);
         if (date.getFullYear() === currentYear) {
           const monthKey = months[date.getMonth()];
           if (monthlyRevenueMap[monthKey]) {
-            monthlyRevenueMap[monthKey].revenue += Number(order.total_amount);
+            monthlyRevenueMap[monthKey].revenue += Number(deal.value || 0);
             monthlyRevenueMap[monthKey].deals += 1;
           }
         }

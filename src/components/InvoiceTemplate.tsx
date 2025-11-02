@@ -26,12 +26,17 @@ interface InvoiceData {
   customer_email?: string;
   customer_phone?: string;
   customer_address?: string;
+  customer_city?: string;
+  customer_state?: string;
+  customer_postal_code?: string;
   items: InvoiceItem[];
   subtotal: number;
   tax_amount: number;
   discount_amount: number;
   total_amount: number;
   notes?: string;
+  cgst_percent?: number;
+  sgst_percent?: number;
 }
 
 interface CompanySettings {
@@ -289,6 +294,13 @@ export const InvoiceTemplate = ({ open, onOpenChange, invoiceData, type = "invoi
                 {editData.customer_email && <p>{editData.customer_email}</p>}
                 {editData.customer_phone && <p>{editData.customer_phone}</p>}
                 {editData.customer_address && <p>{editData.customer_address}</p>}
+                {(editData.customer_city || editData.customer_state || editData.customer_postal_code) && (
+                  <p>
+                    {[editData.customer_city, editData.customer_state, editData.customer_postal_code]
+                      .filter(Boolean)
+                      .join(', ')}
+                  </p>
+                )}
               </div>
             )}
           </div>
@@ -352,9 +364,11 @@ export const InvoiceTemplate = ({ open, onOpenChange, invoiceData, type = "invoi
                     </td>
                     <td className="border p-2 text-right">
                       ₹{(item.cgst_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      {editData.cgst_percent && <span className="text-xs text-muted-foreground"> ({editData.cgst_percent.toFixed(2)}%)</span>}
                     </td>
                     <td className="border p-2 text-right">
                       ₹{(item.sgst_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      {editData.sgst_percent && <span className="text-xs text-muted-foreground"> ({editData.sgst_percent.toFixed(2)}%)</span>}
                     </td>
                     <td className="border p-2 text-right font-bold text-primary">
                       ₹{item.amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -466,9 +480,37 @@ export const InvoiceTemplate = ({ open, onOpenChange, invoiceData, type = "invoi
             <Button variant="outline" onClick={() => setIsEditing(false)}>
               Cancel
             </Button>
-            <Button onClick={() => {
-              setIsEditing(false);
-              toast.success("Changes saved to preview");
+            <Button onClick={async () => {
+              if (type === "quotation" && (editData as any).quotation_id) {
+                try {
+                  // Update quotation in database
+                  const { error } = await supabase
+                    .from("quotations")
+                    .update({
+                      total_amount: editData.total_amount,
+                      tax_amount: editData.tax_amount,
+                      discount_amount: editData.discount_amount,
+                      notes: editData.notes,
+                    })
+                    .eq("id", (editData as any).quotation_id);
+
+                  if (error) throw error;
+                  
+                  setIsEditing(false);
+                  toast.success("Quotation updated successfully");
+                  
+                  // Callback to refresh quotations list
+                  if ((window as any).__onQuotationUpdate) {
+                    (window as any).__onQuotationUpdate();
+                  }
+                } catch (error) {
+                  toast.error("Error updating quotation");
+                  console.error(error);
+                }
+              } else {
+                setIsEditing(false);
+                toast.success("Changes saved to preview");
+              }
             }}>
               Save Changes
             </Button>

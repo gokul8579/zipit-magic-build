@@ -27,6 +27,8 @@ interface SalesOrder {
   discount_amount: number;
   notes: string | null;
   payment_status?: string;
+  cgst_percent?: number;
+  sgst_percent?: number;
 }
 
 const SalesOrders = () => {
@@ -139,10 +141,15 @@ const SalesOrders = () => {
         customer_email: customerData?.email,
         customer_phone: customerData?.phone,
         customer_address: customerData?.address,
+        customer_city: customerData?.city,
+        customer_state: customerData?.state,
+        customer_postal_code: customerData?.postal_code,
         items: items?.map(item => ({
           description: item.description,
           quantity: Number(item.quantity),
           unit_price: Number(item.unit_price),
+          cgst_amount: Number(item.cgst_amount || 0),
+          sgst_amount: Number(item.sgst_amount || 0),
           amount: Number(item.amount),
         })) || [],
         subtotal: Number(order.total_amount) - Number(order.tax_amount) + Number(order.discount_amount),
@@ -150,6 +157,8 @@ const SalesOrders = () => {
         discount_amount: Number(order.discount_amount),
         total_amount: Number(order.total_amount),
         notes: order.notes,
+        cgst_percent: Number(order.cgst_percent || 0),
+        sgst_percent: Number(order.sgst_percent || 0),
       };
 
       setSelectedOrder(invoiceData);
@@ -362,6 +371,7 @@ const SalesOrders = () => {
             <TableRow>
               <TableHead>Order Number</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>Payment Status</TableHead>
               <TableHead>Order Date</TableHead>
               <TableHead>Expected Delivery</TableHead>
               <TableHead>Total Amount</TableHead>
@@ -389,10 +399,62 @@ const SalesOrders = () => {
               filteredOrders.map((order) => (
                 <TableRow key={order.id}>
                   <TableCell className="font-medium">{order.order_number}</TableCell>
-                  <TableCell>
-                    <Badge className={getStatusColor(order.status)} variant="outline">
-                      {order.status}
-                    </Badge>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
+                    <Select 
+                      value={order.status} 
+                      onValueChange={async (value: string) => {
+                        try {
+                          const { error } = await supabase
+                            .from("sales_orders")
+                            .update({ status: value as any })
+                            .eq("id", order.id);
+                          if (error) throw error;
+                          toast.success("Status updated");
+                          fetchOrders();
+                        } catch (error) {
+                          toast.error("Error updating status");
+                        }
+                      }}
+                    >
+                      <SelectTrigger className={`h-8 ${getStatusColor(order.status)}`}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="draft">Draft</SelectItem>
+                        <SelectItem value="confirmed">Confirmed</SelectItem>
+                        <SelectItem value="shipped">Shipped</SelectItem>
+                        <SelectItem value="delivered">Delivered</SelectItem>
+                        <SelectItem value="cancelled">Cancelled</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
+                    <Select 
+                      value={order.payment_status || "pending"} 
+                      onValueChange={async (value) => {
+                        try {
+                          const { error } = await supabase
+                            .from("sales_orders")
+                            .update({ payment_status: value })
+                            .eq("id", order.id);
+                          if (error) throw error;
+                          toast.success("Payment status updated");
+                          fetchOrders();
+                        } catch (error) {
+                          toast.error("Error updating payment status");
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="h-8">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="pending">Pending</SelectItem>
+                        <SelectItem value="paid">Paid</SelectItem>
+                        <SelectItem value="partially_paid">Partially Paid</SelectItem>
+                        <SelectItem value="overdue">Overdue</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </TableCell>
                   <TableCell>{new Date(order.order_date).toLocaleDateString()}</TableCell>
                   <TableCell>
