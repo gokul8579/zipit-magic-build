@@ -53,6 +53,7 @@ export type Database = {
           check_out: string | null
           created_at: string | null
           date: string
+          department_id: string | null
           employee_id: string
           id: string
           notes: string | null
@@ -64,6 +65,7 @@ export type Database = {
           check_out?: string | null
           created_at?: string | null
           date: string
+          department_id?: string | null
           employee_id: string
           id?: string
           notes?: string | null
@@ -75,6 +77,7 @@ export type Database = {
           check_out?: string | null
           created_at?: string | null
           date?: string
+          department_id?: string | null
           employee_id?: string
           id?: string
           notes?: string | null
@@ -82,6 +85,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "attendance_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "attendance_employee_id_fkey"
             columns: ["employee_id"]
@@ -316,6 +326,7 @@ export type Database = {
           created_at: string | null
           customer_id: string | null
           expected_close_date: string | null
+          expected_profit: number | null
           id: string
           lead_id: string | null
           notes: string | null
@@ -331,6 +342,7 @@ export type Database = {
           created_at?: string | null
           customer_id?: string | null
           expected_close_date?: string | null
+          expected_profit?: number | null
           id?: string
           lead_id?: string | null
           notes?: string | null
@@ -346,6 +358,7 @@ export type Database = {
           created_at?: string | null
           customer_id?: string | null
           expected_close_date?: string | null
+          expected_profit?: number | null
           id?: string
           lead_id?: string | null
           notes?: string | null
@@ -369,6 +382,48 @@ export type Database = {
             columns: ["lead_id"]
             isOneToOne: false
             referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      department_members: {
+        Row: {
+          created_at: string | null
+          department_id: string
+          employee_id: string
+          id: string
+          role: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          department_id: string
+          employee_id: string
+          id?: string
+          role?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          department_id?: string
+          employee_id?: string
+          id?: string
+          role?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "department_members_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "department_members_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
             referencedColumns: ["id"]
           },
         ]
@@ -760,6 +815,7 @@ export type Database = {
       products: {
         Row: {
           catalogue: string | null
+          cost_price: number | null
           created_at: string | null
           description: string | null
           id: string
@@ -777,6 +833,7 @@ export type Database = {
         }
         Insert: {
           catalogue?: string | null
+          cost_price?: number | null
           created_at?: string | null
           description?: string | null
           id?: string
@@ -794,6 +851,7 @@ export type Database = {
         }
         Update: {
           catalogue?: string | null
+          cost_price?: number | null
           created_at?: string | null
           description?: string | null
           id?: string
@@ -1115,6 +1173,63 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      stock_approval: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string | null
+          id: string
+          notes: string | null
+          product_id: string | null
+          quantity: number
+          sales_order_id: string | null
+          status: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          product_id?: string | null
+          quantity: number
+          sales_order_id?: string | null
+          status?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          product_id?: string | null
+          quantity?: number
+          sales_order_id?: string | null
+          status?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_approval_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_approval_sales_order_id_fkey"
+            columns: ["sales_order_id"]
+            isOneToOne: false
+            referencedRelation: "sales_orders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tasks: {
         Row: {
