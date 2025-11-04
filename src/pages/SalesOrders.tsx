@@ -4,16 +4,19 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { ShoppingCart, Plus, Eye } from "lucide-react";
+import { ShoppingCart, Plus, Eye, Trash2, Calendar as CalendarIcon } from "lucide-react";
 import { InvoiceTemplate } from "@/components/InvoiceTemplate";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-
 import { SalesOrderProductSelector2 } from "@/components/SalesOrderProductSelector2";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { SearchFilter } from "@/components/SearchFilter";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { formatLocalDate } from "@/lib/dateUtils";
 
 interface SalesOrder {
   id: string;
@@ -38,6 +41,9 @@ const SalesOrders = () => {
   const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [customers, setCustomers] = useState<any[]>([]);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [orderToDelete, setOrderToDelete] = useState<string | null>(null);
+  const [dateFilter, setDateFilter] = useState<Date | undefined>(undefined);
   const [formData, setFormData] = useState({
     order_number: `SO-${Date.now()}`,
     customer_id: "",
@@ -109,10 +115,13 @@ const SalesOrders = () => {
     return colors[status] || "bg-gray-100 text-gray-800";
   };
 
-  const filteredOrders = orders.filter(order =>
-    order.order_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    order.status.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredOrders = orders.filter(order => {
+    const matchesSearch = order.order_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      order.status.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesDate = !dateFilter || 
+      new Date(order.order_date).toDateString() === dateFilter.toDateString();
+    return matchesSearch && matchesDate;
+  });
 
   const handleViewOrder = async (order: SalesOrder) => {
     try {
@@ -135,6 +144,7 @@ const SalesOrders = () => {
 
       const invoiceData = {
         invoice_number: order.order_number,
+        sales_order_id: order.id,
         date: order.order_date,
         due_date: order.expected_delivery_date,
         customer_name: customerData?.name || "Customer Name",
@@ -159,12 +169,68 @@ const SalesOrders = () => {
         notes: order.notes,
         cgst_percent: Number(order.cgst_percent || 0),
         sgst_percent: Number(order.sgst_percent || 0),
+        status: order.status,
       };
 
       setSelectedOrder(invoiceData);
       setInvoiceDialogOpen(true);
     } catch (error) {
       toast.error("Error loading order details");
+    }
+  };
+
+  const handleDeleteOrder = async () => {
+    if (!orderToDelete) return;
+    
+    try {
+      // Delete order items first
+      const { error: itemsError } = await supabase
+        .from("sales_order_items")
+        .delete()
+        .eq("sales_order_id", orderToDelete);
+
+      if (itemsError) throw itemsError;
+
+      // Delete the order
+      const { error } = await supabase
+        .from("sales_orders")
+        .delete()
+        .eq("id", orderToDelete);
+
+      if (error) throw error;
+
+      toast.success("Sales order deleted successfully");
+      fetchOrders();
+      setDeleteDialogOpen(false);
+      setOrderToDelete(null);
+    } catch (error) {
+      toast.error("Error deleting sales order");
+    }
+  };
+
+  const handleInvoiceSave = async (updatedData: any) => {
+    if (!selectedOrder?.sales_order_id) return;
+
+    try {
+      const { error } = await supabase
+        .from("sales_orders")
+        .update({
+          total_amount: updatedData.total_amount,
+          tax_amount: updatedData.tax_amount,
+          discount_amount: updatedData.discount_amount,
+          notes: updatedData.notes,
+          cgst_percent: updatedData.cgst_percent,
+          sgst_percent: updatedData.sgst_percent,
+        })
+        .eq("id", selectedOrder.sales_order_id);
+
+      if (error) throw error;
+
+      toast.success("Sales order updated successfully!");
+      fetchOrders();
+      setInvoiceDialogOpen(false);
+    } catch (error) {
+      toast.error("Error updating sales order");
     }
   };
 
@@ -183,7 +249,36 @@ const SalesOrders = () => {
         </div>
       </div>
 
-      <SearchFilter value={searchTerm} onChange={setSearchTerm} placeholder="Search sales orders..." />
+      <div className="flex gap-2 items-center">
+        <SearchFilter value={searchTerm} onChange={setSearchTerm} placeholder="Search sales orders..." />
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" className="w-[200px] justify-start text-left font-normal">
+              <CalendarIcon className="mr-2 h-4 w-4" />
+              {dateFilter ? formatLocalDate(dateFilter) : "Filter by date"}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0">
+            <Calendar
+              mode="single"
+              selected={dateFilter}
+              onSelect={setDateFilter}
+              initialFocus
+            />
+            {dateFilter && (
+              <div className="p-2 border-t">
+                <Button 
+                  variant="ghost" 
+                  className="w-full" 
+                  onClick={() => setDateFilter(undefined)}
+                >
+                  Clear filter
+                </Button>
+              </div>
+            )}
+          </PopoverContent>
+        </Popover>
+      </div>
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent className="max-w-4xl max-h-[90vh]">
@@ -197,7 +292,6 @@ const SalesOrders = () => {
               const { data: { user } } = await supabase.auth.getUser();
               if (!user) return;
 
-              // Calculate totals from items with per-product tax
               let subtotal = 0;
               let totalCgst = 0;
               let totalSgst = 0;
@@ -265,6 +359,21 @@ const SalesOrders = () => {
                 
                 const { error: itemsErr } = await supabase.from("sales_order_items").insert(items);
                 if (itemsErr) throw itemsErr;
+
+                // Create stock approval for confirmed orders
+                if (formData.status === "confirmed") {
+                  for (const item of items) {
+                    if (item.product_id) {
+                      await supabase.from("stock_approval").insert({
+                        sales_order_id: order.id,
+                        product_id: item.product_id,
+                        quantity: item.quantity,
+                        status: "pending",
+                        user_id: user.id,
+                      } as any);
+                    }
+                  }
+                }
               }
 
               toast.success("Sales order created successfully!");
@@ -381,17 +490,16 @@ const SalesOrders = () => {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center">
+                <TableCell colSpan={7} className="text-center">
                   Loading...
                 </TableCell>
               </TableRow>
-            ) : orders.length === 0 ? (
+            ) : filteredOrders.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center text-muted-foreground py-12">
+                <TableCell colSpan={7} className="text-center text-muted-foreground py-12">
                   <div className="flex flex-col items-center gap-2">
                     <ShoppingCart className="h-12 w-12 text-muted-foreground/50" />
-                    <p>No sales orders yet</p>
-                    <p className="text-sm">Orders will appear here once created</p>
+                    <p>No sales orders found</p>
                   </div>
                 </TableCell>
               </TableRow>
@@ -404,17 +512,44 @@ const SalesOrders = () => {
                       value={order.status} 
                       onValueChange={async (value: string) => {
                         try {
+                          const { data: { user } } = await supabase.auth.getUser();
+                          if (!user) return;
+
                           const { error } = await supabase
                             .from("sales_orders")
                             .update({ status: value as any })
                             .eq("id", order.id);
                           if (error) throw error;
+
+                          // Create stock approval when status changes to confirmed
+                          if (value === "confirmed" && order.status !== "confirmed") {
+                            const { data: items } = await supabase
+                              .from("sales_order_items")
+                              .select("product_id, quantity")
+                              .eq("sales_order_id", order.id);
+
+                            if (items) {
+                              for (const item of items) {
+                                if (item.product_id) {
+                                  await supabase.from("stock_approval").insert({
+                                    sales_order_id: order.id,
+                                    product_id: item.product_id,
+                                    quantity: item.quantity,
+                                    status: "pending",
+                                    user_id: user.id,
+                                  } as any);
+                                }
+                              }
+                            }
+                          }
+
                           toast.success("Status updated");
                           fetchOrders();
                         } catch (error) {
                           toast.error("Error updating status");
                         }
                       }}
+                      disabled={order.status === "delivered"}
                     >
                       <SelectTrigger className={`h-8 ${getStatusColor(order.status)}`}>
                         <SelectValue />
@@ -431,11 +566,11 @@ const SalesOrders = () => {
                   <TableCell onClick={(e) => e.stopPropagation()}>
                     <Select 
                       value={order.payment_status || "pending"} 
-                      onValueChange={async (value) => {
+                      onValueChange={async (value: string) => {
                         try {
                           const { error } = await supabase
                             .from("sales_orders")
-                            .update({ payment_status: value })
+                            .update({ payment_status: value as any })
                             .eq("id", order.id);
                           if (error) throw error;
                           toast.success("Payment status updated");
@@ -444,6 +579,7 @@ const SalesOrders = () => {
                           toast.error("Error updating payment status");
                         }
                       }}
+                      disabled={order.status === "delivered"}
                     >
                       <SelectTrigger className="h-8">
                         <SelectValue />
@@ -456,22 +592,29 @@ const SalesOrders = () => {
                       </SelectContent>
                     </Select>
                   </TableCell>
-                  <TableCell>{new Date(order.order_date).toLocaleDateString()}</TableCell>
+                  <TableCell>{formatLocalDate(order.order_date)}</TableCell>
+                  <TableCell>{order.expected_delivery_date ? formatLocalDate(order.expected_delivery_date) : "-"}</TableCell>
+                  <TableCell>₹{Number(order.total_amount).toLocaleString("en-IN")}</TableCell>
                   <TableCell>
-                    {order.expected_delivery_date
-                      ? new Date(order.expected_delivery_date).toLocaleDateString()
-                      : "-"}
-                  </TableCell>
-                  <TableCell>₹{Number(order.total_amount).toLocaleString()}</TableCell>
-                  <TableCell>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleViewOrder(order)}
-                    >
-                      <Eye className="h-4 w-4 mr-2" />
-                      View Invoice
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleViewOrder(order)}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setOrderToDelete(order.id);
+                          setDeleteDialogOpen(true);
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))
@@ -480,11 +623,19 @@ const SalesOrders = () => {
         </Table>
       </div>
 
-      <InvoiceTemplate
+      <InvoiceTemplate 
         open={invoiceDialogOpen}
         onOpenChange={setInvoiceDialogOpen}
         invoiceData={selectedOrder}
         type="invoice"
+      />
+
+      <ConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onConfirm={handleDeleteOrder}
+        title="Delete Sales Order"
+        description="Are you sure you want to delete this sales order? This action cannot be undone."
       />
     </div>
   );

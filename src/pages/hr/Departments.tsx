@@ -6,9 +6,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, Building2, Eye } from "lucide-react";
+import { Plus, Building2, Eye, Users } from "lucide-react";
 import { DetailViewDialog, DetailField } from "@/components/DetailViewDialog";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
 interface Department {
   id: string;
@@ -20,10 +23,17 @@ interface Department {
 
 const Departments = () => {
   const [departments, setDepartments] = useState<Department[]>([]);
+  const [employees, setEmployees] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
+  const [membersDialogOpen, setMembersDialogOpen] = useState(false);
+  const [selectedDeptId, setSelectedDeptId] = useState<string | null>(null);
   const [selectedDept, setSelectedDept] = useState<Department | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [memberFormData, setMemberFormData] = useState({
+    employee_id: "",
+    role: "",
+  });
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -32,6 +42,7 @@ const Departments = () => {
 
   useEffect(() => {
     fetchDepartments();
+    fetchEmployees();
   }, []);
 
   const fetchDepartments = async () => {
@@ -54,6 +65,24 @@ const Departments = () => {
     }
   };
 
+  const fetchEmployees = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from("employees")
+        .select("id, first_name, last_name")
+        .eq("user_id", user.id)
+        .eq("status", "active");
+
+      if (error) throw error;
+      setEmployees(data || []);
+    } catch (error: any) {
+      console.error("Error fetching employees");
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -73,6 +102,30 @@ const Departments = () => {
       fetchDepartments();
     } catch (error: any) {
       toast.error("Error creating department");
+    }
+  };
+
+  const handleAddMember = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedDeptId) return;
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { error } = await supabase.from("department_members").insert({
+        department_id: selectedDeptId,
+        employee_id: memberFormData.employee_id,
+        role: memberFormData.role || null,
+        user_id: user.id,
+      } as any);
+
+      if (error) throw error;
+
+      toast.success("Member added successfully!");
+      setMemberFormData({ employee_id: "", role: "" });
+    } catch (error: any) {
+      toast.error("Error adding member");
     }
   };
 
@@ -146,7 +199,7 @@ const Departments = () => {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={4} className="text-center">Loading...</TableCell>
+                <TableCell colSpan={5} className="text-center">Loading...</TableCell>
               </TableRow>
             ) : departments.length === 0 ? (
               <TableRow>
@@ -165,16 +218,28 @@ const Departments = () => {
                   <TableCell>{dept.description || "-"}</TableCell>
                   <TableCell>{new Date(dept.created_at).toLocaleDateString()}</TableCell>
                   <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setSelectedDept(dept);
-                        setDetailOpen(true);
-                      }}
-                    >
-                      <Eye className="h-4 w-4" />
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedDept(dept);
+                          setDetailOpen(true);
+                        }}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedDeptId(dept.id);
+                          setMembersDialogOpen(true);
+                        }}
+                      >
+                        <Users className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))
@@ -182,6 +247,50 @@ const Departments = () => {
           </TableBody>
         </Table>
       </div>
+
+      <Dialog open={membersDialogOpen} onOpenChange={setMembersDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Department Member</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleAddMember} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="employee_id">Employee *</Label>
+              <Select 
+                value={memberFormData.employee_id} 
+                onValueChange={(value) => setMemberFormData({ ...memberFormData, employee_id: value })} 
+                required
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select employee" />
+                </SelectTrigger>
+                <SelectContent>
+                  {employees.map((emp) => (
+                    <SelectItem key={emp.id} value={emp.id}>
+                      {`${emp.first_name} ${emp.last_name}`}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="role">Role (Optional)</Label>
+              <Input
+                id="role"
+                value={memberFormData.role}
+                onChange={(e) => setMemberFormData({ ...memberFormData, role: e.target.value })}
+                placeholder="e.g., Team Lead, Developer"
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setMembersDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit">Add Member</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {selectedDept && (
         <DetailViewDialog

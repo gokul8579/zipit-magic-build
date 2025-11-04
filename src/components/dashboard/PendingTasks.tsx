@@ -30,11 +30,22 @@ export const PendingTasks = () => {
         .select("id, title, status, priority, due_date")
         .eq("user_id", user.id)
         .eq("status", "pending")
-        .order("due_date", { ascending: true })
-        .limit(5);
+        .limit(10);
 
       if (error) throw error;
-      setTasks(data || []);
+      
+      // Sort: high priority first, then by nearest due date
+      const sorted = (data || []).sort((a, b) => {
+        const priorityOrder: Record<string, number> = { high: 3, medium: 2, low: 1 };
+        const priorityDiff = (priorityOrder[b.priority] || 0) - (priorityOrder[a.priority] || 0);
+        if (priorityDiff !== 0) return priorityDiff;
+        
+        if (!a.due_date) return 1;
+        if (!b.due_date) return -1;
+        return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
+      });
+      
+      setTasks(sorted.slice(0, 5));
     } catch (error) {
       console.error("Error fetching tasks:", error);
     } finally {

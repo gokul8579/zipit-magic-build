@@ -10,12 +10,12 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { FileText, Plus } from "lucide-react";
+import { FileText, Plus, Eye } from "lucide-react";
 import { InvoiceTemplate } from "@/components/InvoiceTemplate";
-import { DetailViewDialog, DetailField } from "@/components/DetailViewDialog";
-import { formatLocalDate, formatLocalDateTime } from "@/lib/dateUtils";
+import { formatLocalDate } from "@/lib/dateUtils";
 import { QuotationProductSelector } from "@/components/QuotationProductSelector";
 import { SearchFilter } from "@/components/SearchFilter";
+import { Switch } from "@/components/ui/switch";
 
 interface Quotation {
   id: string;
@@ -38,10 +38,10 @@ const Quotations = () => {
   const [deals, setDeals] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedQuotation, setSelectedQuotation] = useState<Quotation | null>(null);
+  const [selectedQuotation, setSelectedQuotation] = useState<any>(null);
   const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false);
-  const [detailOpen, setDetailOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
+  const [statusFilter, setStatusFilter] = useState("all");
   const [formData, setFormData] = useState({
     quotation_number: `QUO-${Date.now()}`,
     customer_id: "",
@@ -152,7 +152,6 @@ const Quotations = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Calculate totals with per-item CGST/SGST
       let subtotal = 0;
       let totalCgst = 0;
       let totalSgst = 0;
@@ -170,7 +169,6 @@ const Quotations = () => {
       const discountAmount = parseFloat(formData.discount_amount) || 0;
       const totalAmount = subtotal + taxAmount - discountAmount;
 
-      // Calculate average percentages for the header
       const avgCgstPercent = subtotal > 0 ? (totalCgst / subtotal) * 100 : 0;
       const avgSgstPercent = subtotal > 0 ? (totalSgst / subtotal) * 100 : 0;
 
@@ -200,7 +198,6 @@ const Quotations = () => {
         throw error;
       }
 
-      // Insert line items with CGST/SGST
       if (quotation && lineItems.length > 0) {
         const items = lineItems.map(item => {
           const itemSubtotal = item.quantity * item.unit_price;
@@ -239,11 +236,6 @@ const Quotations = () => {
     } catch (error: any) {
       console.error("Quotation creation error:", error);
     }
-  };
-
-  const handleQuotationClick = (quotation: Quotation) => {
-    setSelectedQuotation(quotation);
-    setDetailOpen(true);
   };
 
   const handleViewInvoice = async (quotation: Quotation) => {
@@ -292,67 +284,38 @@ const Quotations = () => {
         notes: quotation.notes,
         cgst_percent: Number(quotation.cgst_percent || 0),
         sgst_percent: Number(quotation.sgst_percent || 0),
+        status: quotation.status,
       };
 
+      setSelectedQuotation(invoiceData);
       setInvoiceDialogOpen(true);
-      (window as any).__invoiceData = invoiceData;
-      (window as any).__onQuotationUpdate = fetchQuotations;
     } catch (error) {
       toast.error("Error loading quotation details");
     }
   };
 
-  const handleDetailEdit = async (data: Record<string, any>) => {
-    if (!selectedQuotation) return;
-
+  const handleStatusChange = async (quotationId: string, newStatus: string) => {
     try {
       const { error } = await supabase
         .from("quotations")
-        .update({
-          status: data.status,
-          valid_until: data.valid_until || null,
-          tax_amount: parseFloat(data.tax_amount) || 0,
-          discount_amount: parseFloat(data.discount_amount) || 0,
-          notes: data.notes,
-        })
-        .eq("id", selectedQuotation.id);
+        .update({ status: newStatus as any })
+        .eq("id", quotationId);
 
       if (error) throw error;
 
-      toast.success("Quotation updated successfully!");
+      toast.success("Status updated successfully!");
       fetchQuotations();
-      setDetailOpen(false);
     } catch (error: any) {
-      toast.error("Error updating quotation");
+      toast.error("Error updating status");
     }
   };
 
-  const detailFields: DetailField[] = selectedQuotation ? [
-    { label: "Quotation Number", value: selectedQuotation.quotation_number, type: "text" },
-    { 
-      label: "Status", 
-      value: selectedQuotation.status, 
-      type: "select", 
-      fieldName: "status",
-      selectOptions: [
-        { value: "draft", label: "Draft" },
-        { value: "sent", label: "Sent" },
-        { value: "accepted", label: "Accepted" },
-        { value: "rejected", label: "Rejected" },
-      ]
-    },
-    { label: "Total Amount", value: `₹${Number(selectedQuotation.total_amount).toLocaleString()}`, type: "text" },
-    { label: "Tax Amount (₹)", value: selectedQuotation.tax_amount, type: "number", fieldName: "tax_amount" },
-    { label: "Discount Amount (₹)", value: selectedQuotation.discount_amount, type: "number", fieldName: "discount_amount" },
-    { label: "Valid Until", value: selectedQuotation.valid_until || "", type: "date", fieldName: "valid_until" },
-    { label: "Notes", value: selectedQuotation.notes || "", type: "textarea", fieldName: "notes" },
-    { label: "Created", value: selectedQuotation.created_at, type: "date" },
-  ] : [];
-
-  const filteredQuotations = quotations.filter(q =>
-    q.quotation_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    q.status.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredQuotations = quotations.filter(q => {
+    const matchesSearch = q.quotation_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      q.status.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === "all" || q.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
 
   return (
     <div className="space-y-6">
@@ -472,17 +435,34 @@ const Quotations = () => {
         </Dialog>
       </div>
 
-      <SearchFilter value={searchTerm} onChange={setSearchTerm} placeholder="Search quotations..." />
+      <div className="flex gap-4 items-center">
+        <SearchFilter value={searchTerm} onChange={setSearchTerm} placeholder="Search quotations..." />
+        <div className="flex items-center gap-2">
+          <Label>Filter by Status:</Label>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Statuses</SelectItem>
+              <SelectItem value="draft">Draft</SelectItem>
+              <SelectItem value="sent">Sent</SelectItem>
+              <SelectItem value="accepted">Accepted</SelectItem>
+              <SelectItem value="rejected">Rejected</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
 
       <div className="border rounded-lg">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Quotation Number</TableHead>
+              <TableHead>Quotation #</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Amount</TableHead>
-              <TableHead>Created</TableHead>
+              <TableHead>Total Amount</TableHead>
               <TableHead>Valid Until</TableHead>
+              <TableHead>Created</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -493,40 +473,45 @@ const Quotations = () => {
                   Loading...
                 </TableCell>
               </TableRow>
-            ) : quotations.length === 0 ? (
+            ) : filteredQuotations.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="text-center text-muted-foreground py-12">
                   <div className="flex flex-col items-center gap-2">
                     <FileText className="h-12 w-12 text-muted-foreground/50" />
-                    <p>No quotations yet</p>
-                    <p className="text-sm">Click "Create Quotation" to add your first quotation</p>
+                    <p>No quotations found</p>
                   </div>
                 </TableCell>
               </TableRow>
             ) : (
               filteredQuotations.map((quotation) => (
-                <TableRow 
-                  key={quotation.id}
-                  className="cursor-pointer hover:bg-muted/50"
-                  onClick={() => handleQuotationClick(quotation)}
-                >
+                <TableRow key={quotation.id}>
                   <TableCell className="font-medium">{quotation.quotation_number}</TableCell>
-                  <TableCell>
-                    <Badge className={getStatusColor(quotation.status)} variant="outline">
-                      {quotation.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>₹{Number(quotation.total_amount).toLocaleString()}</TableCell>
-                  <TableCell>{formatLocalDateTime(quotation.created_at)}</TableCell>
-                  <TableCell>{formatLocalDate(quotation.valid_until)}</TableCell>
                   <TableCell onClick={(e) => e.stopPropagation()}>
+                    <Select 
+                      value={quotation.status} 
+                      onValueChange={(value: string) => handleStatusChange(quotation.id, value)}
+                    >
+                      <SelectTrigger className={`h-8 ${getStatusColor(quotation.status)}`}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="draft">Draft</SelectItem>
+                        <SelectItem value="sent">Sent</SelectItem>
+                        <SelectItem value="accepted">Accepted</SelectItem>
+                        <SelectItem value="rejected">Rejected</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
+                  <TableCell>₹{Number(quotation.total_amount).toLocaleString("en-IN")}</TableCell>
+                  <TableCell>{quotation.valid_until ? formatLocalDate(quotation.valid_until) : "-"}</TableCell>
+                  <TableCell>{formatLocalDate(quotation.created_at)}</TableCell>
+                  <TableCell>
                     <Button
-                      variant="outline"
+                      variant="ghost"
                       size="sm"
                       onClick={() => handleViewInvoice(quotation)}
                     >
-                      <FileText className="h-4 w-4 mr-2" />
-                      View Invoice
+                      <Eye className="h-4 w-4" />
                     </Button>
                   </TableCell>
                 </TableRow>
@@ -536,27 +521,11 @@ const Quotations = () => {
         </Table>
       </div>
 
-      <InvoiceTemplate
+      <InvoiceTemplate 
         open={invoiceDialogOpen}
         onOpenChange={setInvoiceDialogOpen}
-        invoiceData={(window as any).__invoiceData}
+        invoiceData={selectedQuotation}
         type="quotation"
-      />
-
-      <DetailViewDialog
-        open={detailOpen}
-        onOpenChange={setDetailOpen}
-        title="Quotation Details"
-        fields={detailFields}
-        onEdit={handleDetailEdit}
-        actions={
-          selectedQuotation && (
-            <Button onClick={() => handleViewInvoice(selectedQuotation)}>
-              <FileText className="h-4 w-4 mr-2" />
-              View Invoice
-            </Button>
-          )
-        }
       />
     </div>
   );

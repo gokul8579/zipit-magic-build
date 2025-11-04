@@ -103,6 +103,7 @@ const Pipeline = () => {
     value: "",
     probability: "50",
     expected_close_date: "",
+    expected_profit: "",
     notes: "",
     lead_id: "",
     customer_id: "",
@@ -171,6 +172,7 @@ const Pipeline = () => {
         value: formData.value ? parseFloat(formData.value) : null,
         probability: parseInt(formData.probability),
         expected_close_date: formData.expected_close_date || null,
+        expected_profit: formData.expected_profit ? parseFloat(formData.expected_profit) : null,
         notes: formData.notes,
         lead_id: formData.lead_id || null,
         customer_id: formData.customer_id || null,
@@ -187,6 +189,7 @@ const Pipeline = () => {
         value: "",
         probability: "50",
         expected_close_date: "",
+        expected_profit: "",
         notes: "",
         lead_id: "",
         customer_id: "",
@@ -440,6 +443,16 @@ const Pipeline = () => {
                     type="date"
                     value={formData.expected_close_date}
                     onChange={(e) => setFormData({ ...formData, expected_close_date: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="expected_profit">Expected Profit (₹)</Label>
+                  <Input
+                    id="expected_profit"
+                    type="number"
+                    step="0.01"
+                    value={formData.expected_profit}
+                    onChange={(e) => setFormData({ ...formData, expected_profit: e.target.value })}
                   />
                 </div>
               </div>

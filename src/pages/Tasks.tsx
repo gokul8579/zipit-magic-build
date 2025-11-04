@@ -50,8 +50,22 @@ const Tasks = () => {
       const { data, error } = await supabase
         .from("tasks")
         .select("*")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false });
+        .eq("user_id", user.id);
+
+      if (error) throw error;
+      
+      // Sort by priority (high first) then by due date (nearest first)
+      const sorted = (data || []).sort((a, b) => {
+        const priorityOrder: Record<string, number> = { high: 3, medium: 2, low: 1 };
+        const priorityDiff = (priorityOrder[b.priority] || 0) - (priorityOrder[a.priority] || 0);
+        if (priorityDiff !== 0) return priorityDiff;
+        
+        if (!a.due_date) return 1;
+        if (!b.due_date) return -1;
+        return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
+      });
+      
+      setTasks(sorted);
 
       if (error) throw error;
       setTasks(data || []);

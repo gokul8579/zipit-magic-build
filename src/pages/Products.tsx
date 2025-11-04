@@ -44,6 +44,7 @@ const Products = () => {
     catalogue: "",
     description: "",
     unit_price: "",
+    cost_price: "",
     stock_quantity: "",
     weight: "",
     weight_unit: "kg",
@@ -120,6 +121,7 @@ const Products = () => {
         catalogue: formData.catalogue || null,
         description: formData.description || null,
         unit_price: parseFloat(formData.unit_price),
+        cost_price: formData.cost_price ? parseFloat(formData.cost_price) : null,
         quantity_in_stock: formData.stock_quantity ? parseInt(formData.stock_quantity) : 0,
         user_id: user.id,
       }] as any);
@@ -141,6 +143,7 @@ const Products = () => {
         catalogue: "",
         description: "",
         unit_price: "",
+        cost_price: "",
         stock_quantity: "",
         weight: "",
         weight_unit: "kg",
@@ -168,6 +171,7 @@ const Products = () => {
           catalogue: data.catalogue || null,
           description: data.description || null,
           unit_price: parseFloat(data.unit_price),
+          cost_price: data.cost_price ? parseFloat(data.cost_price) : null,
           quantity_in_stock: parseInt(data.quantity_in_stock) || 0,
         })
         .eq("id", selectedProduct.id);
@@ -236,7 +240,9 @@ const Products = () => {
       selectOptions: catalogues.map(c => ({ value: c, label: c }))
     },
     { label: "Description", value: selectedProduct.description, type: "textarea", fieldName: "description" },
-    { label: "Unit Price", value: selectedProduct.unit_price, type: "currency", fieldName: "unit_price" },
+    { label: "Unit Price (₹)", value: selectedProduct.unit_price, type: "currency", fieldName: "unit_price" },
+    { label: "Cost Price (₹)", value: (selectedProduct as any).cost_price, type: "currency", fieldName: "cost_price" },
+    { label: "Profit (₹)", value: (selectedProduct.unit_price || 0) - ((selectedProduct as any).cost_price || 0), type: "currency" },
     { label: "Stock Quantity", value: selectedProduct.quantity_in_stock, type: "number", fieldName: "quantity_in_stock" },
     { label: "Created", value: selectedProduct.created_at, type: "date" },
   ] : [];
@@ -304,6 +310,16 @@ const Products = () => {
                     value={formData.unit_price}
                     onChange={(e) => setFormData({ ...formData, unit_price: e.target.value })}
                     required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="cost_price">Cost Price (₹)</Label>
+                  <Input
+                    id="cost_price"
+                    type="number"
+                    step="0.01"
+                    value={formData.cost_price}
+                    onChange={(e) => setFormData({ ...formData, cost_price: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">

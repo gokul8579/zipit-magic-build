@@ -19,20 +19,24 @@ interface AttendanceRecord {
   check_out: string | null;
   status: string;
   notes: string | null;
+  department_id: string | null;
 }
 
 interface Employee {
   id: string;
   first_name: string;
   last_name: string;
+  department_id: string | null;
 }
 
 const Attendance = () => {
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [departments, setDepartments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [departmentFilter, setDepartmentFilter] = useState("all");
   const [formData, setFormData] = useState({
     employee_id: "",
     date: new Date().toISOString().split('T')[0],
@@ -45,19 +49,43 @@ const Attendance = () => {
   useEffect(() => {
     fetchAttendance();
     fetchEmployees();
-  }, [selectedDate]);
+    fetchDepartments();
+  }, [selectedDate, departmentFilter]);
+
+  const fetchDepartments = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from("departments")
+        .select("id, name")
+        .eq("user_id", user.id);
+
+      if (error) throw error;
+      setDepartments(data || []);
+    } catch (error: any) {
+      console.error("Error fetching departments");
+    }
+  };
 
   const fetchAttendance = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data, error } = await supabase
+      let query = supabase
         .from("attendance")
         .select("*")
         .eq("user_id", user.id)
         .eq("date", selectedDate)
         .order("date", { ascending: false });
+
+      if (departmentFilter !== "all") {
+        query = query.eq("department_id", departmentFilter);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       setAttendance(data || []);
@@ -75,7 +103,7 @@ const Attendance = () => {
 
       const { data, error } = await supabase
         .from("employees")
-        .select("id, first_name, last_name")
+        .select("id, first_name, last_name, department_id")
         .eq("user_id", user.id)
         .eq("status", "active");
 
@@ -92,6 +120,8 @@ const Attendance = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      const employee = employees.find(e => e.id === formData.employee_id);
+
       const { error } = await supabase.from("attendance").insert([{
         employee_id: formData.employee_id,
         date: formData.date,
@@ -99,6 +129,7 @@ const Attendance = () => {
         check_out: formData.check_out || null,
         status: formData.status,
         notes: formData.notes || null,
+        department_id: employee?.department_id || null,
         user_id: user.id,
       }] as any);
 
@@ -143,6 +174,19 @@ const Attendance = () => {
           <p className="text-muted-foreground">Track employee attendance</p>
         </div>
         <div className="flex gap-3 items-center">
+          <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Departments</SelectItem>
+              {departments.map((dept) => (
+                <SelectItem key={dept.id} value={dept.id}>
+                  {dept.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <div className="flex items-center gap-2">
             <Label htmlFor="date-filter">Date:</Label>
             <Input
