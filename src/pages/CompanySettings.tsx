@@ -78,12 +78,59 @@ const CompanySettings = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { error } = await supabase
+      // First check if settings exist
+      const { data: existingSettings } = await supabase
         .from("company_settings")
-        .upsert({
-          ...formData,
-          user_id: user.id,
-        } as any);
+        .select("id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      let error;
+      if (existingSettings) {
+        // Update existing
+        const result = await supabase
+          .from("company_settings")
+          .update({
+            company_name: formData.company_name,
+            email: formData.email || null,
+            phone: formData.phone || null,
+            address: formData.address || null,
+            city: formData.city || null,
+            state: formData.state || null,
+            postal_code: formData.postal_code || null,
+            country: formData.country || null,
+            website: formData.website || null,
+            tax_id: formData.tax_id || null,
+            quotation_template: formData.quotation_template,
+            brand_color: formData.brand_color,
+            company_type: formData.company_type || null,
+            cin_number: formData.cin_number || null,
+          })
+          .eq("user_id", user.id);
+        error = result.error;
+      } else {
+        // Insert new
+        const result = await supabase
+          .from("company_settings")
+          .insert({
+            company_name: formData.company_name,
+            email: formData.email || null,
+            phone: formData.phone || null,
+            address: formData.address || null,
+            city: formData.city || null,
+            state: formData.state || null,
+            postal_code: formData.postal_code || null,
+            country: formData.country || null,
+            website: formData.website || null,
+            tax_id: formData.tax_id || null,
+            quotation_template: formData.quotation_template,
+            brand_color: formData.brand_color,
+            company_type: formData.company_type || null,
+            cin_number: formData.cin_number || null,
+            user_id: user.id,
+          });
+        error = result.error;
+      }
 
       if (error) throw error;
 

@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { Plus, Building2, Eye, Users } from "lucide-react";
 import { DetailViewDialog, DetailField } from "@/components/DetailViewDialog";
+import { DepartmentDetailDialog } from "@/components/DepartmentDetailDialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
@@ -30,6 +31,7 @@ const Departments = () => {
   const [selectedDeptId, setSelectedDeptId] = useState<string | null>(null);
   const [selectedDept, setSelectedDept] = useState<Department | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [deptDetailOpen, setDeptDetailOpen] = useState(false);
   const [memberFormData, setMemberFormData] = useState({
     employee_id: "",
     role: "",
@@ -212,17 +214,25 @@ const Departments = () => {
               </TableRow>
             ) : (
               departments.map((dept) => (
-                <TableRow key={dept.id}>
+                <TableRow 
+                  key={dept.id}
+                  className="cursor-pointer hover:bg-muted/50"
+                  onClick={() => {
+                    setSelectedDept(dept);
+                    setDeptDetailOpen(true);
+                  }}
+                >
                   <TableCell className="font-medium">{dept.name}</TableCell>
                   <TableCell>{dept.head_of_department || "-"}</TableCell>
                   <TableCell>{dept.description || "-"}</TableCell>
                   <TableCell>{new Date(dept.created_at).toLocaleDateString()}</TableCell>
-                  <TableCell>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
                     <div className="flex gap-2">
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.stopPropagation();
                           setSelectedDept(dept);
                           setDetailOpen(true);
                         }}
@@ -232,7 +242,8 @@ const Departments = () => {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.stopPropagation();
                           setSelectedDeptId(dept.id);
                           setMembersDialogOpen(true);
                         }}
@@ -293,51 +304,61 @@ const Departments = () => {
       </Dialog>
 
       {selectedDept && (
-        <DetailViewDialog
-          open={detailOpen}
-          onOpenChange={setDetailOpen}
-          title="Department Details"
-          fields={[
-            { label: "Department Name", value: selectedDept.name, type: "text", fieldName: "name" },
-            { label: "Head of Department", value: selectedDept.head_of_department, type: "text", fieldName: "head_of_department" },
-            { label: "Description", value: selectedDept.description, type: "textarea", fieldName: "description" },
-            { label: "Created", value: selectedDept.created_at, type: "date" },
-          ]}
-          onEdit={async (data) => {
-            try {
-              const { error } = await supabase
-                .from("departments")
-                .update({
-                  name: data.name,
-                  head_of_department: data.head_of_department || null,
-                  description: data.description || null,
-                })
-                .eq("id", selectedDept.id);
+        <>
+          <DepartmentDetailDialog
+            open={deptDetailOpen}
+            onOpenChange={setDeptDetailOpen}
+            departmentId={selectedDept.id}
+            departmentName={selectedDept.name}
+            headOfDepartment={selectedDept.head_of_department}
+          />
+          
+          <DetailViewDialog
+            open={detailOpen}
+            onOpenChange={setDetailOpen}
+            title="Edit Department"
+            fields={[
+              { label: "Department Name", value: selectedDept.name, type: "text", fieldName: "name" },
+              { label: "Head of Department", value: selectedDept.head_of_department, type: "text", fieldName: "head_of_department" },
+              { label: "Description", value: selectedDept.description, type: "textarea", fieldName: "description" },
+              { label: "Created", value: selectedDept.created_at, type: "date" },
+            ]}
+            onEdit={async (data) => {
+              try {
+                const { error } = await supabase
+                  .from("departments")
+                  .update({
+                    name: data.name,
+                    head_of_department: data.head_of_department || null,
+                    description: data.description || null,
+                  })
+                  .eq("id", selectedDept.id);
 
-              if (error) throw error;
-              toast.success("Department updated successfully!");
-              fetchDepartments();
-              setDetailOpen(false);
-            } catch (error: any) {
-              toast.error("Failed to update department");
-            }
-          }}
-          onDelete={async () => {
-            try {
-              const { error } = await supabase
-                .from("departments")
-                .delete()
-                .eq("id", selectedDept.id);
+                if (error) throw error;
+                toast.success("Department updated successfully!");
+                fetchDepartments();
+                setDetailOpen(false);
+              } catch (error: any) {
+                toast.error("Failed to update department");
+              }
+            }}
+            onDelete={async () => {
+              try {
+                const { error } = await supabase
+                  .from("departments")
+                  .delete()
+                  .eq("id", selectedDept.id);
 
-              if (error) throw error;
-              toast.success("Department deleted successfully!");
-              setDetailOpen(false);
-              fetchDepartments();
-            } catch (error: any) {
-              toast.error("Failed to delete department");
-            }
-          }}
-        />
+                if (error) throw error;
+                toast.success("Department deleted successfully!");
+                setDetailOpen(false);
+                fetchDepartments();
+              } catch (error: any) {
+                toast.error("Failed to delete department");
+              }
+            }}
+          />
+        </>
       )}
     </div>
   );

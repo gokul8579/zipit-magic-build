@@ -42,7 +42,7 @@ export const InventoryStockApproval = () => {
           status
         `)
         .eq("user_id", user.id)
-        .eq("status", "confirmed")
+        .in("status", ["confirmed", "shipped"])
         .order("created_at", { ascending: false })
         .limit(10);
 
@@ -72,6 +72,32 @@ export const InventoryStockApproval = () => {
 
   const handleApprove = async (orderId: string) => {
     try {
+      const order = pendingOrders.find(o => o.id === orderId);
+      if (!order) return;
+
+      // Reduce stock for each item
+      for (const item of order.items) {
+        if (!item.product_id) continue;
+
+        const { data: product, error: fetchError } = await supabase
+          .from("products")
+          .select("quantity_in_stock")
+          .eq("id", item.product_id)
+          .single();
+
+        if (fetchError) throw fetchError;
+
+        const newStock = (product.quantity_in_stock || 0) - item.quantity;
+        
+        const { error: updateError } = await supabase
+          .from("products")
+          .update({ quantity_in_stock: Math.max(0, newStock) })
+          .eq("id", item.product_id);
+
+        if (updateError) throw updateError;
+      }
+
+      // Update order status
       const { error } = await supabase
         .from("sales_orders")
         .update({ status: "shipped" })
@@ -79,9 +105,10 @@ export const InventoryStockApproval = () => {
 
       if (error) throw error;
 
-      toast.success("Order approved and marked as shipped!");
+      toast.success("Order approved, stock reduced, and marked as shipped!");
       fetchPendingOrders();
     } catch (error) {
+      console.error("Error approving order:", error);
       toast.error("Error approving order");
     }
   };

@@ -27,6 +27,7 @@ const productsItems = [
   { title: "Products", url: "/dashboard/products", icon: Package },
   { title: "Price Books", url: "/dashboard/price-books", icon: BookOpen },
   { title: "Vendors", url: "/dashboard/vendors", icon: Users },
+  { title: "Stock Approval", url: "/dashboard/inventory-approval", icon: ListChecks },
 ];
 
 const hrItems = [

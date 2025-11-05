@@ -36,6 +36,7 @@ const Dashboard = () => {
     totalRevenue: 0,
     pendingTasks: 0,
   });
+  const [totalProfit, setTotalProfit] = useState(0);
   const [loading, setLoading] = useState(true);
   const [upcomingCalls, setUpcomingCalls] = useState<UpcomingCall[]>([]);
   const [recentActivities, setRecentActivities] = useState<any[]>([]);
@@ -92,7 +93,55 @@ const Dashboard = () => {
 
       const activeDeals = deals.data?.filter((d) => d.stage !== "closed_won" && d.stage !== "closed_lost") || [];
       const wonDeals = deals.data?.filter((d) => d.stage === "closed_won") || [];
-      const totalRevenue = wonDeals.reduce((sum, deal) => sum + (Number(deal.value) || 0), 0);
+      
+      // Fetch sales orders for total revenue and profit calculation
+      const { data: salesOrders } = await supabase
+        .from("sales_orders")
+        .select("total_amount, payment_status, id")
+        .eq("user_id", user.id);
+
+      // Calculate total revenue from deals and paid sales orders
+      const dealRevenue = wonDeals.reduce((sum, deal) => sum + (Number(deal.value) || 0), 0);
+      const salesOrderRevenue = (salesOrders || [])
+        .filter(so => so.payment_status === 'paid')
+        .reduce((sum, so) => sum + (Number(so.total_amount) || 0), 0);
+      const totalRevenue = dealRevenue + salesOrderRevenue;
+
+      // Calculate total profit
+      // 1. From deals: expected_profit where stage is closed_won
+      const dealProfit = wonDeals.reduce((sum, deal) => sum + (Number(deal.expected_profit) || 0), 0);
+      
+      // 2. From sales orders: margin difference from products (where payment_status is paid)
+      const paidOrderIds = (salesOrders || [])
+        .filter(so => so.payment_status === 'paid')
+        .map(so => so.id);
+      
+      let salesOrderProfit = 0;
+      if (paidOrderIds.length > 0) {
+        const { data: orderItems } = await supabase
+          .from("sales_order_items")
+          .select("product_id, quantity, unit_price")
+          .in("sales_order_id", paidOrderIds);
+
+        if (orderItems && orderItems.length > 0) {
+          const productIds = [...new Set(orderItems.map(item => item.product_id))];
+          const { data: products } = await supabase
+            .from("products")
+            .select("id, cost_price")
+            .in("id", productIds);
+
+          const productCostMap = new Map(products?.map(p => [p.id, Number(p.cost_price) || 0]) || []);
+          
+          salesOrderProfit = orderItems.reduce((sum, item) => {
+            const costPrice = productCostMap.get(item.product_id) || 0;
+            const margin = (Number(item.unit_price) - costPrice) * Number(item.quantity);
+            return sum + margin;
+          }, 0);
+        }
+      }
+
+      const calculatedTotalProfit = dealProfit + salesOrderProfit;
+      setTotalProfit(calculatedTotalProfit);
 
       // Fetch real won deals (from deals table, not sales orders)
       const { data: wonDealsData } = await supabase
@@ -285,8 +334,14 @@ const Dashboard = () => {
         />
         <StatCard
           title="Total Revenue"
-          value={`₹${stats.totalRevenue.toLocaleString()}`}
+          value={formatIndianCurrency(stats.totalRevenue)}
           icon={DollarSign}
+          className="hover:scale-105 transition-transform"
+        />
+        <StatCard
+          title="Total Profit"
+          value={formatIndianCurrency(totalProfit)}
+          icon={TrendingUp}
           className="hover:scale-105 transition-transform"
         />
         <StatCard
