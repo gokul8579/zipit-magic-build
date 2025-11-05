@@ -165,6 +165,9 @@ export type Database = {
           phone: string | null
           postal_code: string | null
           quotation_template: string | null
+          show_cin_number: boolean | null
+          show_gst_number: boolean | null
+          show_tax_id: boolean | null
           state: string | null
           tax_id: string | null
           updated_at: string | null
@@ -186,6 +189,9 @@ export type Database = {
           phone?: string | null
           postal_code?: string | null
           quotation_template?: string | null
+          show_cin_number?: boolean | null
+          show_gst_number?: boolean | null
+          show_tax_id?: boolean | null
           state?: string | null
           tax_id?: string | null
           updated_at?: string | null
@@ -207,6 +213,9 @@ export type Database = {
           phone?: string | null
           postal_code?: string | null
           quotation_template?: string | null
+          show_cin_number?: boolean | null
+          show_gst_number?: boolean | null
+          show_tax_id?: boolean | null
           state?: string | null
           tax_id?: string | null
           updated_at?: string | null

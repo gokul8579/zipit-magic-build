@@ -101,16 +101,26 @@ export const InvoiceTemplate = ({ open, onOpenChange, invoiceData, type = "invoi
     newItems[index] = { ...newItems[index], [field]: value };
     
     if (field === "quantity" || field === "unit_price") {
-      newItems[index].amount = newItems[index].quantity * newItems[index].unit_price;
+      const itemSubtotal = newItems[index].quantity * newItems[index].unit_price;
+      const cgstPercent = editData.cgst_percent || 9;
+      const sgstPercent = editData.sgst_percent || 9;
+      
+      newItems[index].cgst_amount = (itemSubtotal * cgstPercent) / 100;
+      newItems[index].sgst_amount = (itemSubtotal * sgstPercent) / 100;
+      newItems[index].amount = itemSubtotal + newItems[index].cgst_amount! + newItems[index].sgst_amount!;
     }
 
-    const subtotal = newItems.reduce((sum, item) => sum + item.amount, 0);
-    const total = subtotal + editData.tax_amount - editData.discount_amount;
+    const subtotal = newItems.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
+    const totalCgst = newItems.reduce((sum, item) => sum + (item.cgst_amount || 0), 0);
+    const totalSgst = newItems.reduce((sum, item) => sum + (item.sgst_amount || 0), 0);
+    const taxAmount = totalCgst + totalSgst;
+    const total = subtotal + taxAmount - editData.discount_amount;
 
     setEditData({
       ...editData,
       items: newItems,
       subtotal,
+      tax_amount: taxAmount,
       total_amount: total,
     });
   };
@@ -213,8 +223,8 @@ export const InvoiceTemplate = ({ open, onOpenChange, invoiceData, type = "invoi
                 )}
                 {companySettings?.email && <p><span className="font-bold">Email:</span> {companySettings.email}</p>}
                 {companySettings?.phone && <p><span className="font-bold">Phone:</span> {companySettings.phone}</p>}
-                {companySettings?.tax_id && <p>Tax ID: {companySettings.tax_id}</p>}
-                {(companySettings as any)?.cin_number && <p>CIN: {(companySettings as any).cin_number}</p>}
+                {(companySettings as any)?.show_tax_id && companySettings?.tax_id && <p>Tax ID: {companySettings.tax_id}</p>}
+                {(companySettings as any)?.show_cin_number && (companySettings as any)?.cin_number && <p>CIN: {(companySettings as any).cin_number}</p>}
               </div>
             </div>
             <div className="text-right">
@@ -370,7 +380,10 @@ export const InvoiceTemplate = ({ open, onOpenChange, invoiceData, type = "invoi
                       ₹{(item.sgst_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       {editData.sgst_percent && <span className="text-xs text-muted-foreground"> ({editData.sgst_percent.toFixed(2)}%)</span>}
                     </td>
-                    <td className="border p-2 text-right font-bold text-primary">
+                    <td 
+                      className="border p-2 text-right font-bold" 
+                      style={{ color: companySettings?.brand_color || '#F9423A' }}
+                    >
                       ₹{item.amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
                     {isEditing && (
@@ -444,9 +457,17 @@ export const InvoiceTemplate = ({ open, onOpenChange, invoiceData, type = "invoi
                   <span className="font-medium">₹{editData.discount_amount.toLocaleString()}</span>
                 )}
               </div>
-              <div className="flex justify-between py-3 border-t-2 border-primary">
+              <div 
+                className="flex justify-between py-3 border-t-2" 
+                style={{ borderColor: companySettings?.brand_color || '#F9423A' }}
+              >
                 <span className="text-lg font-bold">Total:</span>
-                <span className="text-lg font-bold text-primary">₹{editData.total_amount.toLocaleString()}</span>
+                <span 
+                  className="text-lg font-bold" 
+                  style={{ color: companySettings?.brand_color || '#F9423A' }}
+                >
+                  ₹{editData.total_amount.toLocaleString()}
+                </span>
               </div>
             </div>
           </div>
@@ -483,7 +504,33 @@ export const InvoiceTemplate = ({ open, onOpenChange, invoiceData, type = "invoi
             <Button onClick={async () => {
               if (type === "quotation" && (editData as any).quotation_id) {
                 try {
-                  // Update quotation in database
+                  const { data: { user } } = await supabase.auth.getUser();
+                  if (!user) return;
+
+                  // Delete existing items
+                  await supabase
+                    .from("quotation_items")
+                    .delete()
+                    .eq("quotation_id", (editData as any).quotation_id);
+
+                  // Insert updated items
+                  const itemsToInsert = editData.items.map((item) => ({
+                    quotation_id: (editData as any).quotation_id,
+                    description: item.description,
+                    quantity: item.quantity,
+                    unit_price: item.unit_price,
+                    amount: item.amount,
+                    cgst_amount: item.cgst_amount || 0,
+                    sgst_amount: item.sgst_amount || 0,
+                  }));
+
+                  const { error: itemsError } = await supabase
+                    .from("quotation_items")
+                    .insert(itemsToInsert);
+
+                  if (itemsError) throw itemsError;
+
+                  // Update quotation totals
                   const { error } = await supabase
                     .from("quotations")
                     .update({

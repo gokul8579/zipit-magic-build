@@ -8,11 +8,13 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { Plus, DollarSign } from "lucide-react";
 import { IndianNumberInput } from "@/components/ui/indian-number-input";
 import { formatIndianCurrency } from "@/lib/formatUtils";
 import { SearchFilter } from "@/components/SearchFilter";
+import { PayrollAnalytics } from "@/components/PayrollAnalytics";
 
 interface PayrollRecord {
   id: string;
@@ -326,19 +328,26 @@ const Payroll = () => {
         </Dialog>
       </div>
 
-      <SearchFilter
-        searchTerm={searchTerm}
-        onSearchChange={setSearchTerm}
-        filterField={filterField}
-        onFilterFieldChange={setFilterField}
-        filterOptions={[
-          { value: "employee_id", label: "Employee" },
-          { value: "status", label: "Status" },
-        ]}
-        placeholder="Search payroll..."
-      />
+      <Tabs defaultValue="records" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="records">Payroll Records</TabsTrigger>
+          <TabsTrigger value="analytics">Analytics</TabsTrigger>
+        </TabsList>
 
-      <div className="border rounded-lg">
+        <TabsContent value="records" className="space-y-4">
+          <SearchFilter
+            searchTerm={searchTerm}
+            onSearchChange={setSearchTerm}
+            filterField={filterField}
+            onFilterFieldChange={setFilterField}
+            filterOptions={[
+              { value: "employee_id", label: "Employee" },
+              { value: "status", label: "Status" },
+            ]}
+            placeholder="Search payroll..."
+          />
+
+          <div className="border rounded-lg">
         <Table>
           <TableHeader>
             <TableRow>
@@ -411,6 +420,12 @@ const Payroll = () => {
           </TableBody>
         </Table>
       </div>
+        </TabsContent>
+
+        <TabsContent value="analytics">
+          <PayrollAnalytics payroll={payroll} getEmployeeName={getEmployeeName} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

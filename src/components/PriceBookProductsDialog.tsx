@@ -48,17 +48,24 @@ export const PriceBookProductsDialog = ({
         return;
       }
 
-      // Get price book items with product details in one query
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setProducts([]);
+        return;
+      }
+
+      // Get price book items with product details
       const { data: priceBookItems, error: itemsError } = await supabase
         .from("price_book_items")
         .select(`
           id,
           list_price,
           product_id,
-          products (
+          products!inner (
             id,
             name,
-            quantity_in_stock
+            quantity_in_stock,
+            user_id
           )
         `)
         .eq("price_book_id", priceBookId);
@@ -73,9 +80,12 @@ export const PriceBookProductsDialog = ({
         return;
       }
 
-      // Map the data
+      // Map the data and filter by user
       const combinedData = priceBookItems
-        .filter(item => item.products) // Filter out any items without products
+        .filter(item => {
+          const product = item.products as any;
+          return product && product.user_id === user.id;
+        })
         .map(item => {
           const product = item.products as any;
           return {

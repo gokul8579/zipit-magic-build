@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 
 const CompanySettings = () => {
@@ -26,6 +27,9 @@ const CompanySettings = () => {
     brand_color: "#F9423A",
     company_type: "",
     cin_number: "",
+    show_tax_id: true,
+    show_cin_number: true,
+    show_gst_number: true,
   });
 
   useEffect(() => {
@@ -61,6 +65,9 @@ const CompanySettings = () => {
           brand_color: (data as any).brand_color || "#F9423A",
           company_type: (data as any).company_type || "",
           cin_number: (data as any).cin_number || "",
+          show_tax_id: (data as any).show_tax_id !== false,
+          show_cin_number: (data as any).show_cin_number !== false,
+          show_gst_number: (data as any).show_gst_number !== false,
         });
       }
     } catch (error: any) {
@@ -105,6 +112,9 @@ const CompanySettings = () => {
             brand_color: formData.brand_color,
             company_type: formData.company_type || null,
             cin_number: formData.cin_number || null,
+            show_tax_id: formData.show_tax_id,
+            show_cin_number: formData.show_cin_number,
+            show_gst_number: formData.show_gst_number,
           })
           .eq("user_id", user.id);
         error = result.error;
@@ -127,6 +137,9 @@ const CompanySettings = () => {
             brand_color: formData.brand_color,
             company_type: formData.company_type || null,
             cin_number: formData.cin_number || null,
+            show_tax_id: formData.show_tax_id,
+            show_cin_number: formData.show_cin_number,
+            show_gst_number: formData.show_gst_number,
             user_id: user.id,
           });
         error = result.error;
@@ -325,7 +338,53 @@ const CompanySettings = () => {
                   className="flex-1"
                 />
               </div>
-              <p className="text-xs text-muted-foreground">Used for company name color in documents</p>
+              <p className="text-xs text-muted-foreground">Used for company name and totals color in invoices</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Invoice & Quotation Settings</CardTitle>
+            <CardDescription>
+              Control what information appears on your invoices and quotations
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between space-x-2">
+              <div className="space-y-0.5">
+                <Label htmlFor="show_tax_id">Show Tax ID / GST Number</Label>
+                <p className="text-sm text-muted-foreground">Display tax identification number on documents</p>
+              </div>
+              <Switch
+                id="show_tax_id"
+                checked={formData.show_tax_id}
+                onCheckedChange={(checked) => setFormData({ ...formData, show_tax_id: checked })}
+              />
+            </div>
+
+            <div className="flex items-center justify-between space-x-2">
+              <div className="space-y-0.5">
+                <Label htmlFor="show_cin_number">Show CIN Number</Label>
+                <p className="text-sm text-muted-foreground">Display Corporate Identification Number on documents</p>
+              </div>
+              <Switch
+                id="show_cin_number"
+                checked={formData.show_cin_number}
+                onCheckedChange={(checked) => setFormData({ ...formData, show_cin_number: checked })}
+              />
+            </div>
+
+            <div className="flex items-center justify-between space-x-2">
+              <div className="space-y-0.5">
+                <Label htmlFor="show_gst_number">Show GST Breakdown</Label>
+                <p className="text-sm text-muted-foreground">Display CGST and SGST breakdown in line items</p>
+              </div>
+              <Switch
+                id="show_gst_number"
+                checked={formData.show_gst_number}
+                onCheckedChange={(checked) => setFormData({ ...formData, show_gst_number: checked })}
+              />
             </div>
 
             <div className="flex justify-end">

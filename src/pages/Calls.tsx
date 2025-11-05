@@ -77,9 +77,12 @@ const Calls = () => {
         scheduled_at: scheduledAtISO,
         notes: formData.notes || null,
         user_id: user.id,
-      }] as any);
+      }]);
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error logging call:", error);
+        throw error;
+      }
 
       toast.success("Call logged successfully!");
       setOpen(false);
@@ -93,7 +96,7 @@ const Calls = () => {
       fetchCalls();
     } catch (error: any) {
       console.error("Error logging call:", error);
-      toast.error("Error logging call");
+      toast.error(error.message || "Error logging call");
     }
   };
 
@@ -114,12 +117,16 @@ const Calls = () => {
         .update({ status: newStatus as any })
         .eq("id", callId);
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error updating status:", error);
+        throw error;
+      }
 
       toast.success("Status updated successfully!");
       fetchCalls();
     } catch (error: any) {
-      toast.error("Error updating status");
+      console.error("Error updating status:", error);
+      toast.error(error.message || "Error updating status");
     }
   };
 
@@ -142,13 +149,14 @@ const Calls = () => {
 
       if (error) {
         console.error("Error updating call:", error);
-        throw new Error("Failed to update call. Please try again.");
+        throw error;
       }
 
       toast.success("Call updated successfully!");
       fetchCalls();
       setDetailOpen(false);
     } catch (error: any) {
+      console.error("Error updating call:", error);
       toast.error(error.message || "Error updating call");
     }
   };
