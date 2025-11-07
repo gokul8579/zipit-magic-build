@@ -54,19 +54,13 @@ export const PriceBookProductsDialog = ({
         return;
       }
 
-      // Get price book items with product details
+      // Get price book items
       const { data: priceBookItems, error: itemsError } = await supabase
         .from("price_book_items")
         .select(`
           id,
           list_price,
-          product_id,
-          products!inner (
-            id,
-            name,
-            quantity_in_stock,
-            user_id
-          )
+          product_id
         `)
         .eq("price_book_id", priceBookId);
 
@@ -80,21 +74,34 @@ export const PriceBookProductsDialog = ({
         return;
       }
 
-      // Map the data and filter by user
+      // Get product IDs
+      const productIds = priceBookItems.map(item => item.product_id);
+
+      // Fetch product details
+      const { data: productsData, error: productsError } = await supabase
+        .from("products")
+        .select("id, name, quantity_in_stock")
+        .in("id", productIds)
+        .eq("user_id", user.id);
+
+      if (productsError) {
+        console.error("Products error:", productsError);
+        throw productsError;
+      }
+
+      // Combine price book items with product data
       const combinedData = priceBookItems
-        .filter(item => {
-          const product = item.products as any;
-          return product && product.user_id === user.id;
-        })
         .map(item => {
-          const product = item.products as any;
+          const product = productsData?.find(p => p.id === item.product_id);
+          if (!product) return null;
           return {
             id: product.id,
             name: product.name,
             stock_quantity: product.quantity_in_stock || 0,
             unit_price: item.list_price || 0,
           };
-        });
+        })
+        .filter((item): item is NonNullable<typeof item> => item !== null);
 
       setProducts(combinedData);
     } catch (error) {

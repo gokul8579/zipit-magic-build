@@ -115,6 +115,16 @@ const SalesOrders = () => {
     return colors[status] || "bg-gray-100 text-gray-800";
   };
 
+  const getPaymentStatusColor = (status: string) => {
+    const colors: Record<string, string> = {
+      pending: "bg-yellow-100 text-yellow-800",
+      paid: "bg-green-100 text-green-800",
+      partially_paid: "bg-blue-100 text-blue-800",
+      overdue: "bg-red-100 text-red-800",
+    };
+    return colors[status] || "bg-gray-100 text-gray-800";
+  };
+
   const filteredOrders = orders.filter(order => {
     const matchesSearch = order.order_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
       order.status.toLowerCase().includes(searchTerm.toLowerCase());
@@ -347,7 +357,7 @@ const SalesOrders = () => {
                   const itemSgst = (itemSubtotal * (item.sgst_percent || 0)) / 100;
                   return {
                     sales_order_id: order.id,
-                    product_id: item.product_id || null,
+                    product_id: item.type === "existing" ? item.product_id : null,
                     description: item.description,
                     quantity: item.quantity,
                     unit_price: item.unit_price,
@@ -564,33 +574,9 @@ const SalesOrders = () => {
                     </Select>
                   </TableCell>
                   <TableCell onClick={(e) => e.stopPropagation()}>
-                    <Select 
-                      value={order.payment_status || "pending"} 
-                      onValueChange={async (value: string) => {
-                        try {
-                          const { error } = await supabase
-                            .from("sales_orders")
-                            .update({ payment_status: value as any })
-                            .eq("id", order.id);
-                          if (error) throw error;
-                          toast.success("Payment status updated");
-                          fetchOrders();
-                        } catch (error) {
-                          toast.error("Error updating payment status");
-                        }
-                      }}
-                      disabled={order.status === "delivered"}
-                    >
-                      <SelectTrigger className="h-8">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="pending">Pending</SelectItem>
-                        <SelectItem value="paid">Paid</SelectItem>
-                        <SelectItem value="partially_paid">Partially Paid</SelectItem>
-                        <SelectItem value="overdue">Overdue</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <Badge className={getPaymentStatusColor(order.payment_status || "pending")} variant="outline">
+                      {order.payment_status || "pending"}
+                    </Badge>
                   </TableCell>
                   <TableCell>{formatLocalDate(order.order_date)}</TableCell>
                   <TableCell>{order.expected_delivery_date ? formatLocalDate(order.expected_delivery_date) : "-"}</TableCell>

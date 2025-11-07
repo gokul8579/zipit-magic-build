@@ -1402,7 +1402,7 @@ export type Database = {
     }
     Enums: {
       call_status: "scheduled" | "completed" | "missed" | "cancelled"
-      call_type: "inbound" | "outbound"
+      call_type: "inbound" | "outbound" | "call" | "meeting"
       deal_stage:
         | "enquiry"
         | "proposal"
@@ -1558,7 +1558,7 @@ export const Constants = {
   public: {
     Enums: {
       call_status: ["scheduled", "completed", "missed", "cancelled"],
-      call_type: ["inbound", "outbound"],
+      call_type: ["inbound", "outbound", "call", "meeting"],
       deal_stage: [
         "enquiry",
         "proposal",

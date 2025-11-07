@@ -32,6 +32,23 @@ export const InventoryStockApproval = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      // Fetch only sales orders that have pending stock approvals
+      const { data: approvals, error: approvalsError } = await supabase
+        .from("stock_approval")
+        .select("sales_order_id")
+        .eq("user_id", user.id)
+        .eq("status", "pending");
+
+      if (approvalsError) throw approvalsError;
+
+      const pendingOrderIds = [...new Set(approvals?.map(a => a.sales_order_id) || [])];
+
+      if (pendingOrderIds.length === 0) {
+        setPendingOrders([]);
+        setLoading(false);
+        return;
+      }
+
       const { data: orders, error } = await supabase
         .from("sales_orders")
         .select(`
@@ -41,10 +58,9 @@ export const InventoryStockApproval = () => {
           total_amount,
           status
         `)
+        .in("id", pendingOrderIds)
         .eq("user_id", user.id)
-        .in("status", ["confirmed", "shipped"])
-        .order("created_at", { ascending: false })
-        .limit(10);
+        .order("created_at", { ascending: false });
 
       if (error) throw error;
 
@@ -72,6 +88,9 @@ export const InventoryStockApproval = () => {
 
   const handleApprove = async (orderId: string) => {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
       const order = pendingOrders.find(o => o.id === orderId);
       if (!order) return;
 
@@ -97,7 +116,20 @@ export const InventoryStockApproval = () => {
         if (updateError) throw updateError;
       }
 
-      // Update order status
+      // Update stock approval status to approved
+      const { error: approvalError } = await supabase
+        .from("stock_approval")
+        .update({ 
+          status: "approved",
+          approved_at: new Date().toISOString(),
+          approved_by: user.id
+        })
+        .eq("sales_order_id", orderId)
+        .eq("status", "pending");
+
+      if (approvalError) throw approvalError;
+
+      // Update order status to shipped
       const { error } = await supabase
         .from("sales_orders")
         .update({ status: "shipped" })
@@ -115,6 +147,23 @@ export const InventoryStockApproval = () => {
 
   const handleReject = async (orderId: string) => {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Update stock approval status to rejected
+      const { error: approvalError } = await supabase
+        .from("stock_approval")
+        .update({ 
+          status: "rejected",
+          approved_at: new Date().toISOString(),
+          approved_by: user.id
+        })
+        .eq("sales_order_id", orderId)
+        .eq("status", "pending");
+
+      if (approvalError) throw approvalError;
+
+      // Update order status
       const { error } = await supabase
         .from("sales_orders")
         .update({ status: "cancelled" })

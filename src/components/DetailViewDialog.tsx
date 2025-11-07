@@ -69,6 +69,10 @@ export const DetailViewDialog = ({ open, onOpenChange, title, fields, onEdit, on
         return new Date(field.value as string).toLocaleString();
       case "currency":
         return `₹${Number(field.value).toLocaleString()}`;
+      case "select":
+        // For select fields, find the label for the value
+        const option = field.selectOptions?.find(opt => opt.value === field.value);
+        return option?.label || field.value;
       default:
         return field.value;
     }
