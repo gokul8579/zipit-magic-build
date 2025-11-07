@@ -160,6 +160,7 @@ export type Database = {
           country: string | null
           created_at: string | null
           email: string | null
+          gst_number: string | null
           id: string
           logo_url: string | null
           phone: string | null
@@ -184,6 +185,7 @@ export type Database = {
           country?: string | null
           created_at?: string | null
           email?: string | null
+          gst_number?: string | null
           id?: string
           logo_url?: string | null
           phone?: string | null
@@ -208,6 +210,7 @@ export type Database = {
           country?: string | null
           created_at?: string | null
           email?: string | null
+          gst_number?: string | null
           id?: string
           logo_url?: string | null
           phone?: string | null

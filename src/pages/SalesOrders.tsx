@@ -17,6 +17,7 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { formatLocalDate } from "@/lib/dateUtils";
+import { formatIndianNumber } from "@/lib/formatUtils";
 
 interface SalesOrder {
   id: string;
@@ -574,13 +575,36 @@ const SalesOrders = () => {
                     </Select>
                   </TableCell>
                   <TableCell onClick={(e) => e.stopPropagation()}>
-                    <Badge className={getPaymentStatusColor(order.payment_status || "pending")} variant="outline">
-                      {order.payment_status || "pending"}
-                    </Badge>
+                    <Select 
+                      value={order.payment_status || "pending"} 
+                      onValueChange={async (value: string) => {
+                        try {
+                          const { error } = await supabase
+                            .from("sales_orders")
+                            .update({ payment_status: value })
+                            .eq("id", order.id);
+                          if (error) throw error;
+                          toast.success("Payment status updated");
+                          fetchOrders();
+                        } catch (error) {
+                          toast.error("Error updating payment status");
+                        }
+                      }}
+                    >
+                      <SelectTrigger className={`h-8 ${getPaymentStatusColor(order.payment_status || "pending")}`}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="pending">Pending</SelectItem>
+                        <SelectItem value="paid">Paid</SelectItem>
+                        <SelectItem value="partially_paid">Partially Paid</SelectItem>
+                        <SelectItem value="overdue">Overdue</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </TableCell>
                   <TableCell>{formatLocalDate(order.order_date)}</TableCell>
                   <TableCell>{order.expected_delivery_date ? formatLocalDate(order.expected_delivery_date) : "-"}</TableCell>
-                  <TableCell>₹{Number(order.total_amount).toLocaleString("en-IN")}</TableCell>
+                  <TableCell>₹{formatIndianNumber(order.total_amount)}</TableCell>
                   <TableCell>
                     <div className="flex gap-2">
                       <Button

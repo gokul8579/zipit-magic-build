@@ -23,6 +23,7 @@ const CompanySettings = () => {
     country: "",
     website: "",
     tax_id: "",
+    gst_number: "",
     quotation_template: "t1",
     brand_color: "#F9423A",
     company_type: "",
@@ -61,6 +62,7 @@ const CompanySettings = () => {
           country: data.country || "",
           website: data.website || "",
           tax_id: data.tax_id || "",
+          gst_number: (data as any).gst_number || "",
           quotation_template: (data as any).quotation_template || "t1",
           brand_color: (data as any).brand_color || "#F9423A",
           company_type: (data as any).company_type || "",
@@ -108,6 +110,7 @@ const CompanySettings = () => {
             country: formData.country || null,
             website: formData.website || null,
             tax_id: formData.tax_id || null,
+            gst_number: formData.gst_number || null,
             quotation_template: formData.quotation_template,
             brand_color: formData.brand_color,
             company_type: formData.company_type || null,
@@ -133,6 +136,7 @@ const CompanySettings = () => {
             country: formData.country || null,
             website: formData.website || null,
             tax_id: formData.tax_id || null,
+            gst_number: formData.gst_number || null,
             quotation_template: formData.quotation_template,
             brand_color: formData.brand_color,
             company_type: formData.company_type || null,
@@ -265,6 +269,14 @@ const CompanySettings = () => {
                   id="tax_id"
                   value={formData.tax_id}
                   onChange={(e) => setFormData({ ...formData, tax_id: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="gst_number">GST Number</Label>
+                <Input
+                  id="gst_number"
+                  value={formData.gst_number}
+                  onChange={(e) => setFormData({ ...formData, gst_number: e.target.value })}
                 />
               </div>
             </div>

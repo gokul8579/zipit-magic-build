@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Download, Edit2, X } from "lucide-react";
 import { useReactToPrint } from "react-to-print";
+import { formatIndianCurrency, formatIndianNumber } from "@/lib/formatUtils";
 
 interface InvoiceItem {
   description: string;
@@ -49,6 +50,7 @@ interface CompanySettings {
   postal_code?: string;
   logo_url?: string;
   tax_id?: string;
+  gst_number?: string;
   brand_color?: string;
 }
 
@@ -222,6 +224,7 @@ export const InvoiceTemplate = ({ open, onOpenChange, invoiceData, type = "invoi
                   </p>
                 )}
                 {companySettings?.email && <p><span className="font-bold">Email:</span> {companySettings.email}</p>}
+                {(companySettings as any)?.show_gst_number && companySettings?.gst_number && <p><span className="font-bold">GST No:</span> {companySettings.gst_number}</p>}
                 {companySettings?.phone && <p><span className="font-bold">Phone:</span> {companySettings.phone}</p>}
                 {(companySettings as any)?.show_tax_id && companySettings?.tax_id && <p>Tax ID: {companySettings.tax_id}</p>}
                 {(companySettings as any)?.show_cin_number && (companySettings as any)?.cin_number && <p>CIN: {(companySettings as any).cin_number}</p>}
@@ -366,25 +369,25 @@ export const InvoiceTemplate = ({ open, onOpenChange, invoiceData, type = "invoi
                           className="text-right"
                         />
                       ) : (
-                        `₹${item.unit_price.toLocaleString()}`
+                        formatIndianCurrency(item.unit_price)
                       )}
                     </td>
                     <td className="border p-2 text-right">
-                      ₹{(item.quantity * item.unit_price).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      {formatIndianCurrency(item.quantity * item.unit_price)}
                     </td>
                     <td className="border p-2 text-right">
-                      ₹{(item.cgst_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      {formatIndianCurrency(item.cgst_amount || 0)}
                       {editData.cgst_percent && <span className="text-xs text-muted-foreground"> ({editData.cgst_percent.toFixed(2)}%)</span>}
                     </td>
                     <td className="border p-2 text-right">
-                      ₹{(item.sgst_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      {formatIndianCurrency(item.sgst_amount || 0)}
                       {editData.sgst_percent && <span className="text-xs text-muted-foreground"> ({editData.sgst_percent.toFixed(2)}%)</span>}
                     </td>
                     <td 
                       className="border p-2 text-right font-bold" 
                       style={{ color: companySettings?.brand_color || '#F9423A' }}
                     >
-                      ₹{item.amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      {formatIndianCurrency(item.amount)}
                     </td>
                     {isEditing && (
                       <td className="border p-2 text-center">
@@ -413,7 +416,7 @@ export const InvoiceTemplate = ({ open, onOpenChange, invoiceData, type = "invoi
             <div className="w-80 space-y-2">
               <div className="flex justify-between py-2 border-b">
                 <span>Subtotal:</span>
-                <span className="font-medium">₹{editData.subtotal.toLocaleString()}</span>
+                <span className="font-medium">{formatIndianCurrency(editData.subtotal)}</span>
               </div>
               <div className="flex justify-between py-2 border-b">
                 <span>Tax:</span>
@@ -433,7 +436,7 @@ export const InvoiceTemplate = ({ open, onOpenChange, invoiceData, type = "invoi
                     className="w-32 text-right"
                   />
                 ) : (
-                  <span className="font-medium">₹{editData.tax_amount.toLocaleString()}</span>
+                  <span className="font-medium">{formatIndianCurrency(editData.tax_amount)}</span>
                 )}
               </div>
               <div className="flex justify-between py-2 border-b">
@@ -454,7 +457,7 @@ export const InvoiceTemplate = ({ open, onOpenChange, invoiceData, type = "invoi
                     className="w-32 text-right"
                   />
                 ) : (
-                  <span className="font-medium">₹{editData.discount_amount.toLocaleString()}</span>
+                  <span className="font-medium">{formatIndianCurrency(editData.discount_amount)}</span>
                 )}
               </div>
               <div 
@@ -466,7 +469,7 @@ export const InvoiceTemplate = ({ open, onOpenChange, invoiceData, type = "invoi
                   className="text-lg font-bold" 
                   style={{ color: companySettings?.brand_color || '#F9423A' }}
                 >
-                  ₹{editData.total_amount.toLocaleString()}
+                  {formatIndianCurrency(editData.total_amount)}
                 </span>
               </div>
             </div>

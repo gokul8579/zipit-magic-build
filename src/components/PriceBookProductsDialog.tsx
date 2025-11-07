@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
 import { Package } from "lucide-react";
+import { formatIndianCurrency } from "@/lib/formatUtils";
 
 interface Product {
   id: string;
@@ -81,8 +82,7 @@ export const PriceBookProductsDialog = ({
       const { data: productsData, error: productsError } = await supabase
         .from("products")
         .select("id, name, quantity_in_stock")
-        .in("id", productIds)
-        .eq("user_id", user.id);
+        .in("id", productIds);
 
       if (productsError) {
         console.error("Products error:", productsError);
@@ -146,7 +146,7 @@ export const PriceBookProductsDialog = ({
                 products.map((product) => (
                   <TableRow key={product.id}>
                     <TableCell className="font-medium">{product.name}</TableCell>
-                    <TableCell>₹{Number(product.unit_price).toLocaleString()}</TableCell>
+                    <TableCell>{formatIndianCurrency(product.unit_price)}</TableCell>
                     <TableCell>{product.stock_quantity}</TableCell>
                   </TableRow>
                 ))
